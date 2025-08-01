@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Heart, ShoppingCart, Info, Trash2 } from 'lucide-react';
+import { Badge } from './ui/badge';
+import { Heart, ShoppingCart, Loader2 } from 'lucide-react';
+import { Product } from '../lib/productsData';
 
-export interface ProductCardProps {
-  product: any;
+interface ProductCardProps {
+  product: Product;
   onAddToCart: () => void;
   onAddToWishlist: () => void;
   onRemoveFromWishlist: () => void;
@@ -20,116 +21,97 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isWishlisted,
   loading = false
 }) => {
-  const handleWishlistClick = () => {
-    if (isWishlisted) {
-      onRemoveFromWishlist();
-    } else {
-      onAddToWishlist();
-    }
-  };
+  const [isHovered, setIsHovered] = useState(false);
 
   const getHintText = () => {
     if (product.variants) {
+      if (product.name === "Rice") {
+        return "Add to cart or wishlist to choose variety";
+      } else if (product.name === "Dhoopbatti") {
+        return "Add to cart or wishlist to choose fragrance";
+      }
       return "Add to cart or wishlist to choose variety/fragrance";
     }
     return "Click to add to cart or wishlist";
   };
 
   return (
-    <Card className="group hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:scale-105 hover:-translate-y-2 border-0 bg-white relative">
-      {/* Green Gradient Border - positioned behind content */}
-      <div className="absolute inset-0 bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-lg p-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0">
-        <div className="bg-white rounded-lg h-full w-full"></div>
-      </div>
-      
-      {/* Content Container - positioned above gradient border */}
-      <div className="relative z-10">
-        <div className="relative overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
-          />
-          
-          {/* Wishlist Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleWishlistClick}
-            disabled={loading}
-            className={`absolute top-3 right-3 h-10 w-10 rounded-full transition-all duration-300 transform hover:scale-110 z-20 ${
-              isWishlisted 
-                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg' 
-                : 'bg-white/90 hover:bg-white text-gray-600 hover:text-red-500 shadow-md backdrop-blur-sm'
-            }`}
-          >
-            <Heart className={`h-5 w-5 transition-all duration-300 ${isWishlisted ? 'fill-current' : ''}`} />
-          </Button>
-
-          {/* Stock Status */}
-          {!product.inStock && (
-            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg z-20">
+    <div
+      className={`bg-white rounded-lg shadow-md transition-all duration-300 overflow-hidden transform hover:scale-105 hover:shadow-xl ${
+        isHovered ? 'ring-2 ring-green-500 ring-opacity-50' : ''
+      }`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Product Image */}
+      <div className="relative aspect-square overflow-hidden">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-300"
+        />
+        {!product.inStock && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <Badge variant="destructive" className="text-white">
               Out of Stock
-            </div>
-          )}
+            </Badge>
+          </div>
+        )}
+      </div>
 
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
+      {/* Product Info */}
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-semibold text-gray-900 text-lg line-clamp-2">
+            {product.name}
+          </h3>
+          <div className="flex items-center gap-1">
+            <span className="text-lg font-bold text-green-600">₹{product.price}</span>
+          </div>
         </div>
 
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold line-clamp-1 group-hover:text-green-600 transition-colors duration-300">
-            {product.name}
-          </CardTitle>
-          <CardDescription className="line-clamp-2 text-sm text-gray-600">
-            {product.description}
-          </CardDescription>
-        </CardHeader>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+          {product.description}
+        </p>
 
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-bold text-green-600 group-hover:text-green-700 transition-colors duration-300">
-              ₹{product.price}
-            </div>
-            <div className="text-sm text-gray-500 capitalize bg-gradient-to-r from-gray-100 to-gray-200 px-3 py-1 rounded-full border border-gray-200">
-              {product.category}
-            </div>
-          </div>
+        {/* Hint Text */}
+        <p className="text-xs text-gray-500 mb-3 italic">
+          {getHintText()}
+        </p>
 
-          {/* Hint Text for Products with Variants */}
-          {product.variants && (
-            <div className="flex items-center gap-2 mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-              <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
-              <span className="text-xs text-blue-700">{getHintText()}</span>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="space-y-2">
-            <Button
-              onClick={onAddToCart}
-              disabled={loading || !product.inStock}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg text-white font-medium"
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Add to Cart
-            </Button>
-            
-            {/* Remove from Wishlist Button - Only show when item is wishlisted */}
-            {isWishlisted && (
-              <Button
-                onClick={onRemoveFromWishlist}
-                disabled={loading}
-                variant="outline"
-                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transform hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove from Wishlist
-              </Button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={onAddToCart}
+            disabled={loading || !product.inStock}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            size="sm"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Add to Cart
+              </>
             )}
-          </div>
-        </CardContent>
+          </Button>
+
+          <Button
+            onClick={isWishlisted ? onRemoveFromWishlist : onAddToWishlist}
+            disabled={loading}
+            variant={isWishlisted ? "destructive" : "outline"}
+            size="sm"
+            className="px-3"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
+            )}
+          </Button>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };

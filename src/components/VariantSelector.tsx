@@ -2,10 +2,11 @@ import React from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { X } from 'lucide-react';
+import { Product, ProductVariant } from '../lib/productsData';
 
 export interface VariantSelectorProps {
-  product: any;
-  onSelect: (variant: any) => void;
+  product: Product;
+  onSelect: (variant: ProductVariant) => void;
   onClose: () => void;
   productType: 'rice' | 'dhoopbatti';
 }
@@ -39,7 +40,7 @@ export const VariantSelector: React.FC<VariantSelectorProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {product.variants?.map((variant: any, index: number) => (
+            {product.variants?.map((variant: ProductVariant, index: number) => (
               <Button
                 key={index}
                 variant="outline"

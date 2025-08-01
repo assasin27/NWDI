@@ -27,6 +27,13 @@ export interface StockAlert {
   is_resolved: boolean;
 }
 
+// Helper function to check if table exists
+const isTableNotFoundError = (error: { code?: string; message?: string }): boolean => {
+  return error?.code === '42P01' || 
+         error?.message?.includes('does not exist') ||
+         error?.message?.includes('relation');
+};
+
 export const inventoryService = {
   // Get all inventory items
   async getInventoryItems(): Promise<InventoryItem[]> {
@@ -37,6 +44,10 @@ export const inventoryService = {
         .order('last_updated', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching inventory items:', error);
         return [];
       }
@@ -58,6 +69,10 @@ export const inventoryService = {
         .single();
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet.');
+          return null;
+        }
         console.error('Error fetching inventory item:', error);
         return null;
       }
@@ -96,12 +111,13 @@ export const inventoryService = {
         .eq('product_id', productId);
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Cannot update stock.');
+          return false;
+        }
         console.error('Error updating stock:', error);
         return false;
       }
-
-      // Check for stock alerts
-      await this.checkStockAlerts(productId, newStock, currentItem.min_stock_level);
 
       return true;
     } catch (error) {
@@ -115,12 +131,16 @@ export const inventoryService = {
     try {
       const { error } = await supabase
         .from('inventory')
-        .insert([{
+        .insert({
           ...item,
           last_updated: new Date().toISOString()
-        }]);
+        });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Cannot add item.');
+          return false;
+        }
         console.error('Error adding inventory item:', error);
         return false;
       }
@@ -144,6 +164,10 @@ export const inventoryService = {
         .eq('product_id', productId);
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Cannot update item.');
+          return false;
+        }
         console.error('Error updating inventory item:', error);
         return false;
       }
@@ -155,37 +179,21 @@ export const inventoryService = {
     }
   },
 
-  // Check stock alerts
+  // Check and create stock alerts
   async checkStockAlerts(productId: string, currentStock: number, minStockLevel: number): Promise<void> {
     try {
-      // Get product name
-      const { data: productData } = await supabase
-        .from('products')
-        .select('name')
-        .eq('id', productId)
-        .single();
+      // Check if stock is low
+      if (currentStock <= minStockLevel) {
+        const alertType = currentStock === 0 ? 'out_of_stock' : 'low_stock';
+        const message = currentStock === 0 
+          ? `Product is out of stock` 
+          : `Stock is low (${currentStock} remaining)`;
 
-      const productName = productData?.name || 'Unknown Product';
-
-      // Check for low stock alert
-      if (currentStock <= minStockLevel && currentStock > 0) {
         await this.createStockAlert({
           product_id: productId,
-          product_name: productName,
-          alert_type: 'low_stock',
-          message: `Low stock alert: ${productName} has ${currentStock} units remaining`,
-          current_stock: currentStock,
-          is_resolved: false
-        });
-      }
-
-      // Check for out of stock alert
-      if (currentStock === 0) {
-        await this.createStockAlert({
-          product_id: productId,
-          product_name: productName,
-          alert_type: 'out_of_stock',
-          message: `Out of stock: ${productName} is completely out of stock`,
+          product_name: '', // Will be filled by the calling function
+          alert_type: alertType,
+          message,
           current_stock: currentStock,
           is_resolved: false
         });
@@ -200,12 +208,16 @@ export const inventoryService = {
     try {
       const { error } = await supabase
         .from('stock_alerts')
-        .insert([{
+        .insert({
           ...alert,
           created_at: new Date().toISOString()
-        }]);
+        });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Stock alerts table does not exist yet. Cannot create alert.');
+          return false;
+        }
         console.error('Error creating stock alert:', error);
         return false;
       }
@@ -232,6 +244,10 @@ export const inventoryService = {
       const { data, error } = await query;
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Stock alerts table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching stock alerts:', error);
         return [];
       }
@@ -252,6 +268,10 @@ export const inventoryService = {
         .eq('id', alertId);
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Stock alerts table does not exist yet. Cannot resolve alert.');
+          return false;
+        }
         console.error('Error resolving stock alert:', error);
         return false;
       }
@@ -269,10 +289,14 @@ export const inventoryService = {
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
-        .lte('current_stock', supabase.raw('min_stock_level'))
-        .order('current_stock', { ascending: true });
+        .lt('current_stock', supabase.raw('min_stock_level'))
+        .order('last_updated', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching low stock items:', error);
         return [];
       }
@@ -294,6 +318,10 @@ export const inventoryService = {
         .order('last_updated', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Inventory table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching out of stock items:', error);
         return [];
       }
@@ -313,16 +341,16 @@ export const inventoryService = {
     totalValue: number;
   }> {
     try {
-      const inventoryItems = await this.getInventoryItems();
+      const items = await this.getInventoryItems();
       const lowStockItems = await this.getLowStockItems();
       const outOfStockItems = await this.getOutOfStockItems();
 
-      const totalValue = inventoryItems.reduce((sum, item) => {
-        return sum + (item.current_stock * item.cost_price);
+      const totalValue = items.reduce((sum, item) => {
+        return sum + (item.current_stock * item.selling_price);
       }, 0);
 
       return {
-        totalItems: inventoryItems.length,
+        totalItems: items.length,
         lowStockItems: lowStockItems.length,
         outOfStockItems: outOfStockItems.length,
         totalValue
@@ -346,14 +374,7 @@ export const inventoryService = {
   }>): Promise<boolean> {
     try {
       for (const update of updates) {
-        const success = await this.updateStock(
-          update.productId,
-          update.quantity,
-          update.operation
-        );
-        if (!success) {
-          return false;
-        }
+        await this.updateStock(update.productId, update.quantity, update.operation);
       }
       return true;
     } catch (error) {
@@ -365,12 +386,12 @@ export const inventoryService = {
   // Export inventory report
   async exportInventoryReport(): Promise<string> {
     try {
-      const inventoryItems = await this.getInventoryItems();
+      const items = await this.getInventoryItems();
       const summary = await this.getInventorySummary();
 
       const csvData = [
-        ['Product ID', 'Product Name', 'Current Stock', 'Min Stock Level', 'Max Stock Level', 'Unit', 'Cost Price', 'Selling Price', 'Last Updated'],
-        ...inventoryItems.map(item => [
+        ['Product ID', 'Product Name', 'Current Stock', 'Min Stock Level', 'Max Stock Level', 'Unit', 'Cost Price', 'Selling Price', 'Location', 'Last Updated'],
+        ...items.map(item => [
           item.product_id,
           item.product_name,
           item.current_stock.toString(),
@@ -379,15 +400,27 @@ export const inventoryService = {
           item.unit,
           item.cost_price.toString(),
           item.selling_price.toString(),
+          item.location || '',
           item.last_updated
         ])
       ];
 
       const csvContent = csvData.map(row => row.join(',')).join('\n');
-      return csvContent;
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory_report_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      return 'Inventory report exported successfully';
     } catch (error) {
       console.error('Error exporting inventory report:', error);
-      return '';
+      return 'Failed to export inventory report';
     }
   }
 }; 

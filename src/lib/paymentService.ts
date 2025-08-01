@@ -46,9 +46,19 @@ export const paymentService = {
       return null;
     }
   },
+};
 
+interface RazorpayOrder {
+  id: string;
+  amount: number;
+  currency: string;
+  receipt: string;
+  status: string;
+}
+
+export const paymentService = {
   // Create Razorpay order
-  async createRazorpayOrder(orderId: string, amount: number): Promise<any> {
+  async createRazorpayOrder(orderId: string, amount: number): Promise<RazorpayOrder | null> {
     try {
       const response = await fetch('/api/payments/create-razorpay-order', {
         method: 'POST',

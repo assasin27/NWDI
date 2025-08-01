@@ -5,6 +5,7 @@ import { useCart } from "../hooks/useCart";
 import { useSupabaseUser } from "../lib/useSupabaseUser";
 import { useNotification } from "../contexts/NotificationContext";
 import { Loader2, Heart } from 'lucide-react';
+import { Product } from "../lib/productsData";
 
 const Wishlist: React.FC = () => {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
@@ -12,7 +13,7 @@ const Wishlist: React.FC = () => {
   const { user, loading: userLoading } = useSupabaseUser();
   const { showNotification } = useNotification();
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: Product) => {
     if (userLoading) return;
     
     if (!user) {
@@ -24,7 +25,7 @@ const Wishlist: React.FC = () => {
     showNotification('Item added to cart!', 'success');
   };
 
-  const handleAddToWishlist = (product: any) => {
+  const handleAddToWishlist = (product: Product) => {
     if (userLoading) return;
     
     if (!user) {
@@ -35,7 +36,7 @@ const Wishlist: React.FC = () => {
     addToWishlist(product);
   };
 
-  const handleRemoveFromWishlist = (product: any) => {
+  const handleRemoveFromWishlist = (product: Product) => {
     removeFromWishlist(product.id);
     showNotification('Item removed from wishlist', 'info');
   };

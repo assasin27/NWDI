@@ -42,7 +42,7 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
 
   const handleAccountCreation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,10 +204,10 @@ const Signup: React.FC = () => {
                   <Label htmlFor="password">Password</Label>
                   <div className="relative mt-1">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
+          <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      value={password}
+            value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       className="pl-10 pr-10"
@@ -407,15 +407,15 @@ const Signup: React.FC = () => {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Already have an account?{' '}
-            <button
+          <button
               onClick={() => navigate('/login')}
               className="text-green-600 hover:text-green-700 font-medium"
             >
               Sign in
-            </button>
+          </button>
           </p>
         </div>
-      </div>
+        </div>
     </div>
   );
 };

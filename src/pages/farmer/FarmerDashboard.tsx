@@ -9,14 +9,14 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import {
+import { 
   IndianRupee,
-  Package,
+  Package, 
   TrendingUp,
   Users,
   ShoppingCart,
   AlertTriangle,
-  CheckCircle,
+  CheckCircle, 
   Clock,
   Truck,
   BarChart3,
@@ -78,14 +78,33 @@ const FarmerDashboard: React.FC = () => {
     outOfStockItems: 0
   });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [stockAlerts, setStockAlerts] = useState<any[]>([]);
+interface InventoryItem {
+  id: string;
+  product_name: string;
+  current_stock: number;
+  min_stock_level: number;
+  selling_price: number;
+  last_updated: string;
+}
+
+interface StockAlert {
+  id: string;
+  product_name: string;
+  current_stock: number;
+  min_stock_level: number;
+  alert_type: string;
+  created_at: string;
+  is_resolved: boolean;
+}
+
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [loadDashboardData]);
 
   const loadDashboardData = async () => {
     try {
@@ -177,7 +196,7 @@ const FarmerDashboard: React.FC = () => {
     try {
       const success = await orderTrackingService.updateOrderStatus(
         orderId,
-        status as any,
+        status as 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned',
         `Order status updated to ${status}`,
         undefined,
         undefined,
@@ -255,22 +274,22 @@ const FarmerDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+      <div className="px-4 py-8">
+      {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Farmer Dashboard</h1>
             <p className="text-gray-600">Manage your products, orders, and inventory</p>
-          </div>
+            </div>
           <div className="flex gap-4">
-            <Button
-              onClick={() => navigate('/farmer/add-product')}
+              <Button
+                onClick={() => navigate('/farmer/add-product')}
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-            >
+              >
               <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
-            <Button
+                Add Product
+              </Button>
+              <Button
               variant="outline"
               onClick={exportInventoryReport}
             >
@@ -278,14 +297,14 @@ const FarmerDashboard: React.FC = () => {
               Export Report
             </Button>
             <Button
-              variant="outline"
+                variant="outline"
               onClick={() => navigate('/farmer')}
-            >
+              >
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
+                Logout
+              </Button>
         </div>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -314,7 +333,7 @@ const FarmerDashboard: React.FC = () => {
               <p className="text-blue-100 text-sm">Orders received</p>
             </CardContent>
           </Card>
-
+          
           <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
@@ -327,7 +346,7 @@ const FarmerDashboard: React.FC = () => {
               <p className="text-yellow-100 text-sm">Active products</p>
             </CardContent>
           </Card>
-
+          
           <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
@@ -434,7 +453,7 @@ const FarmerDashboard: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+          </div>
           </TabsContent>
 
           {/* Orders Tab */}
@@ -499,11 +518,11 @@ const FarmerDashboard: React.FC = () => {
                 <CardDescription>Manage product stock levels</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+            <div className="space-y-4">
                   {inventoryItems.map((item) => (
                     <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-4">
-                        <div>
+                      <div>
                           <h3 className="font-semibold">{item.product_name}</h3>
                           <p className="text-sm text-gray-600">Current Stock: {item.current_stock} {item.unit}</p>
                           <p className="text-sm text-gray-600">Min Level: {item.min_stock_level}</p>
@@ -558,8 +577,8 @@ const FarmerDashboard: React.FC = () => {
               <CardHeader>
                 <CardTitle>Stock Alerts</CardTitle>
                 <CardDescription>Manage stock alerts and notifications</CardDescription>
-              </CardHeader>
-              <CardContent>
+                  </CardHeader>
+                  <CardContent>
                 <div className="space-y-4">
                   {stockAlerts.map((alert) => (
                     <div key={alert.id} className="border rounded-lg p-4">
@@ -577,20 +596,20 @@ const FarmerDashboard: React.FC = () => {
                           }>
                             {alert.alert_type.replace('_', ' ')}
                           </Badge>
-                          <Button
-                            size="sm"
+                              <Button
+                                size="sm"
                             variant="outline"
                             onClick={() => handleResolveAlert(alert.id)}
                           >
                             Resolve
-                          </Button>
+                              </Button>
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                  </CardContent>
+                </Card>
           </TabsContent>
 
           {/* Settings Tab */}
@@ -620,11 +639,11 @@ const FarmerDashboard: React.FC = () => {
                       defaultValue="10"
                       min="1"
                     />
-                  </div>
+            </div>
                   <Button className="w-full">
                     Save Settings
                   </Button>
-                </div>
+        </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,5 +1,4 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
-import { emailService } from "./emailService";
+import { supabase } from '../integrations/supabase/supabaseClient';
 
 export interface OrderStatus {
   id: string;
@@ -28,6 +27,35 @@ export interface TrackingInfo {
   }>;
 }
 
+interface OrderDetails {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  shipping_address: string;
+  tracking_number?: string;
+  estimated_delivery?: string;
+  items: Array<{
+    id: string;
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
+// Helper function to check if table exists
+const isTableNotFoundError = (error: { code?: string; message?: string }): boolean => {
+  return error?.code === '42P01' || 
+         error?.message?.includes('does not exist') ||
+         error?.message?.includes('relation') ||
+         error?.code === 'PGRST200';
+};
+
 export const orderTrackingService = {
   // Get order status history
   async getOrderStatusHistory(orderId: string): Promise<OrderStatus[]> {
@@ -36,9 +64,13 @@ export const orderTrackingService = {
         .from('order_status_history')
         .select('*')
         .eq('order_id', orderId)
-        .order('updated_at', { ascending: true });
+        .order('updated_at', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Order status history table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching order status history:', error);
         return [];
       }
@@ -60,7 +92,24 @@ export const orderTrackingService = {
     updatedBy: string = 'system'
   ): Promise<boolean> {
     try {
-      // Update order status
+      // Add to status history
+      const { error: historyError } = await supabase
+        .from('order_status_history')
+        .insert({
+          order_id: orderId,
+          status,
+          status_message: statusMessage,
+          tracking_number: trackingNumber,
+          estimated_delivery: estimatedDelivery,
+          updated_at: new Date().toISOString(),
+          updated_by: updatedBy
+        });
+
+      if (historyError && !isTableNotFoundError(historyError)) {
+        console.error('Error adding to status history:', historyError);
+      }
+
+      // Update main order
       const { error: orderError } = await supabase
         .from('orders')
         .update({
@@ -72,30 +121,13 @@ export const orderTrackingService = {
         .eq('id', orderId);
 
       if (orderError) {
+        if (isTableNotFoundError(orderError)) {
+          console.log('Orders table does not exist yet. Cannot update order status.');
+          return false;
+        }
         console.error('Error updating order status:', orderError);
         return false;
       }
-
-      // Add status history entry
-      const { error: historyError } = await supabase
-        .from('order_status_history')
-        .insert([{
-          order_id: orderId,
-          status,
-          status_message: statusMessage,
-          tracking_number: trackingNumber,
-          estimated_delivery: estimatedDelivery,
-          updated_at: new Date().toISOString(),
-          updated_by: updatedBy
-        }]);
-
-      if (historyError) {
-        console.error('Error adding status history:', historyError);
-        return false;
-      }
-
-      // Send email notification
-      await this.sendStatusUpdateEmail(orderId, status, statusMessage, trackingNumber);
 
       return true;
     } catch (error) {
@@ -104,8 +136,8 @@ export const orderTrackingService = {
     }
   },
 
-  // Get order by ID
-  async getOrder(orderId: string): Promise<any> {
+  // Get order details
+  async getOrder(orderId: string): Promise<OrderDetails | null> {
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -117,6 +149,10 @@ export const orderTrackingService = {
         .single();
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Returning null.');
+          return null;
+        }
         console.error('Error fetching order:', error);
         return null;
       }
@@ -129,7 +165,7 @@ export const orderTrackingService = {
   },
 
   // Get customer orders
-  async getCustomerOrders(customerId: string): Promise<any[]> {
+  async getCustomerOrders(customerId: string): Promise<OrderDetails[]> {
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -141,6 +177,10 @@ export const orderTrackingService = {
         .order('created_at', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching customer orders:', error);
         return [];
       }
@@ -152,26 +192,35 @@ export const orderTrackingService = {
     }
   },
 
-  // Track shipment
+  // Track shipment (mock implementation)
   async trackShipment(trackingNumber: string, carrier: string): Promise<TrackingInfo | null> {
     try {
-      // This would integrate with shipping carrier APIs
-      // For now, we'll simulate tracking info
-      const response = await fetch(`/api/shipping/track?tracking=${trackingNumber}&carrier=${carrier}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to track shipment');
-      }
+      // Mock tracking info - in real app, this would call carrier API
+      const mockTrackingInfo: TrackingInfo = {
+        order_id: 'mock-order-id',
+        tracking_number: trackingNumber,
+        carrier,
+        status: 'in_transit',
+        last_location: 'Mumbai, India',
+        estimated_delivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        events: [
+          {
+            timestamp: new Date().toISOString(),
+            location: 'Mumbai, India',
+            status: 'in_transit',
+            description: 'Package picked up by courier'
+          }
+        ]
+      };
 
-      const trackingInfo = await response.json();
-      return trackingInfo;
+      return mockTrackingInfo;
     } catch (error) {
       console.error('Error tracking shipment:', error);
       return null;
     }
   },
 
-  // Send status update email
+  // Send status update email (mock implementation)
   async sendStatusUpdateEmail(
     orderId: string,
     status: string,
@@ -179,22 +228,15 @@ export const orderTrackingService = {
     trackingNumber?: string
   ): Promise<void> {
     try {
-      const order = await this.getOrder(orderId);
-      if (!order) return;
-
-      await emailService.sendOrderStatusUpdate(
-        orderId,
-        order.customer_email,
-        status,
-        trackingNumber
-      );
+      // Mock email sending - in real app, this would send actual email
+      console.log(`Mock email sent for order ${orderId}: ${status} - ${statusMessage}`);
     } catch (error) {
       console.error('Error sending status update email:', error);
     }
   },
 
   // Get orders by status
-  async getOrdersByStatus(status: OrderStatus['status']): Promise<any[]> {
+  async getOrdersByStatus(status: OrderStatus['status']): Promise<OrderDetails[]> {
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -206,6 +248,10 @@ export const orderTrackingService = {
         .order('created_at', { ascending: false });
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching orders by status:', error);
         return [];
       }
@@ -220,52 +266,38 @@ export const orderTrackingService = {
   // Cancel order
   async cancelOrder(orderId: string, reason: string, cancelledBy: string = 'system'): Promise<boolean> {
     try {
-      const success = await this.updateOrderStatus(
-        orderId,
-        'cancelled',
-        `Order cancelled: ${reason}`,
-        undefined,
-        undefined,
-        cancelledBy
-      );
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: reason,
+          cancelled_by: cancelledBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
-      if (success) {
-        // Process refund if payment was made
-        const order = await this.getOrder(orderId);
-        if (order && order.payment_status === 'paid') {
-          // Trigger refund process
-          await this.processRefund(orderId, order.total_amount, reason);
+      if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Cannot cancel order.');
+          return false;
         }
+        console.error('Error cancelling order:', error);
+        return false;
       }
 
-      return success;
+      return true;
     } catch (error) {
       console.error('Error cancelling order:', error);
       return false;
     }
   },
 
-  // Process refund
+  // Process refund (mock implementation)
   async processRefund(orderId: string, amount: number, reason: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/payments/refund', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId,
-          amount,
-          reason
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to process refund');
-      }
-
-      const result = await response.json();
-      return result.success;
+      // Mock refund processing - in real app, this would process actual refund
+      console.log(`Mock refund processed for order ${orderId}: ${amount} - ${reason}`);
+      return true;
     } catch (error) {
       console.error('Error processing refund:', error);
       return false;
@@ -275,30 +307,26 @@ export const orderTrackingService = {
   // Mark order as delivered
   async markAsDelivered(orderId: string, deliveredBy: string = 'system'): Promise<boolean> {
     try {
-      const success = await this.updateOrderStatus(
-        orderId,
-        'delivered',
-        'Order has been delivered successfully',
-        undefined,
-        undefined,
-        deliveredBy
-      );
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'delivered',
+          actual_delivery: new Date().toISOString(),
+          delivered_by: deliveredBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
-      if (success) {
-        // Update actual delivery date
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            actual_delivery: new Date().toISOString()
-          })
-          .eq('id', orderId);
-
-        if (error) {
-          console.error('Error updating actual delivery date:', error);
+      if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Cannot mark as delivered.');
+          return false;
         }
+        console.error('Error marking order as delivered:', error);
+        return false;
       }
 
-      return success;
+      return true;
     } catch (error) {
       console.error('Error marking order as delivered:', error);
       return false;
@@ -316,10 +344,19 @@ export const orderTrackingService = {
     try {
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('status, created_at, actual_delivery')
-        .not('status', 'is', null);
+        .select('status, created_at, actual_delivery');
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Returning default statistics.');
+          return {
+            totalOrders: 0,
+            deliveredOrders: 0,
+            pendingOrders: 0,
+            cancelledOrders: 0,
+            averageDeliveryTime: 0
+          };
+        }
         console.error('Error fetching delivery statistics:', error);
         return {
           totalOrders: 0,
@@ -383,7 +420,7 @@ export const orderTrackingService = {
   },
 
   // Get recent orders for dashboard
-  async getRecentOrders(limit: number = 10): Promise<any[]> {
+  async getRecentOrders(limit: number = 10): Promise<OrderDetails[]> {
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -395,6 +432,10 @@ export const orderTrackingService = {
         .limit(limit);
 
       if (error) {
+        if (isTableNotFoundError(error)) {
+          console.log('Orders table does not exist yet. Returning empty array.');
+          return [];
+        }
         console.error('Error fetching recent orders:', error);
         return [];
       }

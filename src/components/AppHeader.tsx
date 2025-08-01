@@ -37,9 +37,9 @@ export default function AppHeader({ onCartClick }: { onCartClick?: () => void })
     setProfileError("");
     setProfileSuccess("");
     try {
-      const updates: any = {};
-      if (profileName) updates['data'] = { name: profileName };
-      if (profilePassword) updates['password'] = profilePassword;
+      const updates: { data?: { name: string }; password?: string } = {};
+      if (profileName) updates.data = { name: profileName };
+      if (profilePassword) updates.password = profilePassword;
       const { error } = await supabase.auth.updateUser(updates);
       if (error) {
         setProfileError(error.message);

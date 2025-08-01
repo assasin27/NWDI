@@ -66,7 +66,7 @@ Message: ${formData.message}
 
   return (
     <section id="contact" className="py-16 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Get in Touch</h2>
@@ -165,35 +165,42 @@ Message: ${formData.message}
           {/* Contact Information */}
           <div className="space-y-8">
             <div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-6">Contact Information</h3>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-5 w-5 text-green-600" />
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6 text-center lg:text-left">Contact Information</h3>
+              
+              {/* Contact Details Table */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="grid grid-cols-1 divide-y divide-gray-200">
+                  {/* Address */}
+                  <div className="flex items-start p-4 hover:bg-gray-50 transition-colors">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                      <MapPin className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
+                      <p className="text-gray-600 leading-relaxed">Nareshwadi Village, Pune District, Maharashtra, India</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Address</h4>
-                    <p className="text-gray-600">Nareshwadi Village, Pune District, Maharashtra, India</p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-5 w-5 text-green-600" />
+                  {/* Phone */}
+                  <div className="flex items-start p-4 hover:bg-gray-50 transition-colors">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
+                      <p className="text-gray-600">+91 98765 43210</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Phone</h4>
-                    <p className="text-gray-600">+91 98765 43210</p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Mail className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Email</h4>
-                    <p className="text-gray-600">info@nareshwadi.com</p>
+                  {/* Email */}
+                  <div className="flex items-start p-4 hover:bg-gray-50 transition-colors">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mr-4">
+                      <Mail className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
+                      <p className="text-gray-600">info@nareshwadi.com</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -201,42 +208,46 @@ Message: ${formData.message}
 
             {/* Business Hours */}
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Business Hours</h3>
-              <div className="space-y-2 text-gray-600">
-                <div className="flex justify-between">
-                  <span>Monday - Friday</span>
-                  <span>8:00 AM - 8:00 PM</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Saturday</span>
-                  <span>9:00 AM - 6:00 PM</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Sunday</span>
-                  <span>10:00 AM - 4:00 PM</span>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center lg:text-left">Business Hours</h3>
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="grid grid-cols-1 divide-y divide-gray-200">
+                  <div className="flex justify-between items-center p-4 hover:bg-gray-50 transition-colors">
+                    <span className="font-medium text-gray-900">Monday - Friday</span>
+                    <span className="text-gray-600">8:00 AM - 8:00 PM</span>
+                  </div>
+                  <div className="flex justify-between items-center p-4 hover:bg-gray-50 transition-colors">
+                    <span className="font-medium text-gray-900">Saturday</span>
+                    <span className="text-gray-600">9:00 AM - 6:00 PM</span>
+                  </div>
+                  <div className="flex justify-between items-center p-4 hover:bg-gray-50 transition-colors">
+                    <span className="font-medium text-gray-900">Sunday</span>
+                    <span className="text-gray-600">10:00 AM - 4:00 PM</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Why Choose Us */}
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Why Choose Us</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-600">Fresh from local farms</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-600">100% organic products</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-600">Fast delivery service</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-600">Supporting local farmers</span>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center lg:text-left">Why Choose Us</h3>
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="text-gray-600">Fresh from local farms</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="text-gray-600">100% organic products</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="text-gray-600">Fast delivery service</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="text-gray-600">Supporting local farmers</span>
+                  </div>
                 </div>
               </div>
             </div>

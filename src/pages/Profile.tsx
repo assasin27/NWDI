@@ -40,7 +40,7 @@ interface Address {
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useSupabaseUser();
+  const { user, loading: userLoading, signOut } = useSupabaseUser();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -70,6 +70,11 @@ const Profile: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
+    // Wait for user loading to complete before checking authentication
+    if (userLoading) {
+      return;
+    }
+
     if (!user) {
       navigate('/login');
       return;
@@ -87,7 +92,7 @@ const Profile: React.FC = () => {
       // Initialize with empty array if no addresses
       setAddresses([]);
     }
-  }, [user, navigate]);
+  }, [user, userLoading, navigate]);
 
   const handleUpdateProfile = async () => {
     setLoading(true);
@@ -251,6 +256,18 @@ const Profile: React.FC = () => {
       console.error('Sign out error:', error);
     }
   };
+
+  // Show loading spinner while user data is being fetched
+  if (userLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;

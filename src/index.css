@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Organic Farm Design System - All colors MUST be HSL */
+@layer base {
+  :root {
+    /* Organic color palette */
+    --background: 45 20% 98%;
+    --foreground: 30 8% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 30 8% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 8% 20%;
+
+    /* Primary: Forest Green */
+    --primary: 130 35% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 130 35% 45%;
+    --primary-dark: 130 35% 25%;
+
+    /* Secondary: Earth Brown */
+    --secondary: 25 30% 85%;
+    --secondary-foreground: 25 30% 25%;
+    --secondary-dark: 25 30% 25%;
+
+    /* Muted: Cream tones */
+    --muted: 45 30% 95%;
+    --muted-foreground: 30 8% 45%;
+
+    /* Accent: Fresh Lime */
+    --accent: 90 40% 85%;
+    --accent-foreground: 90 40% 25%;
+    --accent-bright: 90 50% 65%;
+
+    /* Produce colors */
+    --tomato: 10 80% 60%;
+    --carrot: 25 85% 65%;
+    --lettuce: 120 40% 50%;
+
+    /* Organic elements */
+    --leaf-green: 110 45% 40%;
+    --soil-brown: 30 35% 30%;
+    --harvest-gold: 45 75% 70%;
+    --fresh-mint: 150 50% 85%;
+
+    /* System colors */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 25 20% 90%;
+    --input: 25 20% 95%;
+    --ring: 130 35% 35%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(130 35% 35%), hsl(130 35% 45%));
+    --gradient-earth: linear-gradient(135deg, hsl(25 30% 85%), hsl(45 30% 90%));
+    --gradient-fresh: linear-gradient(135deg, hsl(90 40% 85%), hsl(150 50% 85%));
+    --gradient-hero: linear-gradient(135deg, hsl(130 35% 35% / 0.9), hsl(25 30% 25% / 0.9));
+
+    /* Shadows */
+    --shadow-organic: 0 10px 25px -5px hsl(130 35% 35% / 0.1);
+    --shadow-card: 0 4px 20px -2px hsl(25 30% 25% / 0.1);
+    --shadow-button: 0 2px 10px -2px hsl(130 35% 35% / 0.2);
+
+    /* Animations */
+    --transition-organic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.2s ease-in-out;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground scroll-smooth;
+  }
+}
+
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+}

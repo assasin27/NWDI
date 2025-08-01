@@ -1,0 +1,20 @@
+{
+  "name": "t-er-backend",
+  "version": "1.0.0",
+  "description": "Backend for T-ER project",
+  "main": "index.js",
+  "scripts": {
+    "start": "python manage.py runserver",
+    "test": "python -m pytest",
+    "test:coverage": "python -m pytest --cov=. --cov-report=html",
+    "migrate": "python manage.py migrate",
+    "makemigrations": "python manage.py makemigrations"
+  },
+  "keywords": [
+    "django",
+    "backend",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}

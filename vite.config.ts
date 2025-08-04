@@ -5,13 +5,14 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: process.env.NODE_ENV === 'production' ? '/' : '/',
+  base: '/',
   server: {
     host: "::",
     port: 8080,
     allowedHosts: [
-      "nwdi-f872.onrender.com",
+      "groove-norfolk-initiatives-episode.trycloudflare.com",
       "t-er.onrender.com",
+      "amazing-unicorn-3f7416.netlify.app",
     ],
     proxy: {
       '/api/v1': {
@@ -25,7 +26,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     allowedHosts: [
+      "groove-norfolk-initiatives-episode.trycloudflare.com",
       "t-er.onrender.com",
+      "amazing-unicorn-3f7416.netlify.app",
       "nwdi-f872.onrender.com", // Add your Render host here
     ],
   },

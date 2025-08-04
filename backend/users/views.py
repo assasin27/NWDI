@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from .models import User, SellerProfile
 from .serializers import UserSerializer, SellerProfileSerializer
 
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 

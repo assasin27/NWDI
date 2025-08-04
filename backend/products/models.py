@@ -1,5 +1,5 @@
 from django.db import models
-from backend.users.models import SellerProfile
+from users.models import SellerProfile
 import uuid
 
 class Category(models.Model):

@@ -37,10 +37,7 @@ import {
   User,
   LogOut
 } from 'lucide-react';
-import { supabase } from '../../integrations/supabase/supabaseClient';
-import { inventoryService } from '../../lib/inventoryService';
-import { orderTrackingService } from '../../lib/orderTrackingService';
-import { emailService } from '../../lib/emailService';
+import { apiService } from '../../lib/apiService';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -102,10 +99,6 @@ interface StockAlert {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
-
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -129,18 +122,21 @@ interface StockAlert {
     }
   };
 
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
   const loadStats = async () => {
     try {
       // Get orders statistics
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('total_amount, status');
-
-      if (!ordersError && orders) {
-        const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+      const ordersResponse = await apiService.getOrders();
+      
+      if (ordersResponse.data) {
+        const orders = ordersResponse.data;
+        const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         const totalOrders = orders.length;
-        const pendingOrders = orders.filter(o => ['pending', 'confirmed', 'processing'].includes(o.status)).length;
-        const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
+        const pendingOrders = orders.filter((o: any) => ['pending', 'confirmed', 'processing'].includes(o.status)).length;
+        const deliveredOrders = orders.filter((o: any) => o.status === 'delivered').length;
 
         setStats(prev => ({
           ...prev,
@@ -151,14 +147,22 @@ interface StockAlert {
         }));
       }
 
-      // Get inventory statistics
-      const inventorySummary = await inventoryService.getInventorySummary();
-      setStats(prev => ({
-        ...prev,
-        totalProducts: inventorySummary.totalItems,
-        lowStockItems: inventorySummary.lowStockItems,
-        outOfStockItems: inventorySummary.outOfStockItems
-      }));
+      // Get products statistics
+      const productsResponse = await apiService.getProducts();
+      
+      if (productsResponse.data) {
+        const products = productsResponse.data;
+        const totalProducts = products.length;
+        const lowStockItems = products.filter((p: any) => p.quantity <= 10).length;
+        const outOfStockItems = products.filter((p: any) => p.quantity === 0).length;
+
+        setStats(prev => ({
+          ...prev,
+          totalProducts,
+          lowStockItems,
+          outOfStockItems
+        }));
+      }
 
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -167,8 +171,10 @@ interface StockAlert {
 
   const loadRecentOrders = async () => {
     try {
-      const orders = await orderTrackingService.getRecentOrders(10);
-      setRecentOrders(orders);
+      const response = await apiService.getRecentOrders(10);
+      if (response.data) {
+        setRecentOrders(response.data);
+      }
     } catch (error) {
       console.error('Error loading recent orders:', error);
     }
@@ -176,8 +182,19 @@ interface StockAlert {
 
   const loadInventoryItems = async () => {
     try {
-      const items = await inventoryService.getInventoryItems();
-      setInventoryItems(items);
+      const response = await apiService.getProducts();
+      if (response.data) {
+        // Transform products to inventory items format
+        const items = response.data.map((product: any) => ({
+          id: product.id,
+          product_name: product.name,
+          current_stock: product.quantity,
+          min_stock_level: 10, // Default minimum stock level
+          selling_price: product.price,
+          last_updated: product.updated_at
+        }));
+        setInventoryItems(items);
+      }
     } catch (error) {
       console.error('Error loading inventory items:', error);
     }
@@ -185,8 +202,22 @@ interface StockAlert {
 
   const loadStockAlerts = async () => {
     try {
-      const alerts = await inventoryService.getStockAlerts(false); // Get unresolved alerts
-      setStockAlerts(alerts);
+      const response = await apiService.getProducts();
+      if (response.data) {
+        // Create stock alerts based on low stock products
+        const alerts = response.data
+          .filter((product: any) => product.quantity <= 10)
+          .map((product: any) => ({
+            id: product.id,
+            product_name: product.name,
+            current_stock: product.quantity,
+            min_stock_level: 10,
+            alert_type: product.quantity === 0 ? 'out_of_stock' : 'low_stock',
+            created_at: product.updated_at,
+            is_resolved: false
+          }));
+        setStockAlerts(alerts);
+      }
     } catch (error) {
       console.error('Error loading stock alerts:', error);
     }
@@ -194,16 +225,9 @@ interface StockAlert {
 
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const success = await orderTrackingService.updateOrderStatus(
-        orderId,
-        status as 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned',
-        `Order status updated to ${status}`,
-        undefined,
-        undefined,
-        'farmer'
-      );
-
-      if (success) {
+      const response = await apiService.updateOrder(orderId, { status });
+      
+      if (response.data) {
         await loadRecentOrders();
         await loadStats();
       }
@@ -214,11 +238,18 @@ interface StockAlert {
 
   const handleUpdateStock = async (productId: string, quantity: number, operation: 'add' | 'subtract') => {
     try {
-      const success = await inventoryService.updateStock(productId, quantity, operation);
-      if (success) {
-        await loadInventoryItems();
-        await loadStockAlerts();
-        await loadStats();
+      // Get current product
+      const productResponse = await apiService.getProduct(productId);
+      if (productResponse.data) {
+        const currentQuantity = productResponse.data.quantity;
+        const newQuantity = operation === 'add' ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
+        
+        const response = await apiService.updateProduct(productId, { quantity: newQuantity });
+        if (response.data) {
+          await loadInventoryItems();
+          await loadStockAlerts();
+          await loadStats();
+        }
       }
     } catch (error) {
       console.error('Error updating stock:', error);
@@ -227,10 +258,9 @@ interface StockAlert {
 
   const handleResolveAlert = async (alertId: string) => {
     try {
-      const success = await inventoryService.resolveStockAlert(alertId);
-      if (success) {
-        await loadStockAlerts();
-      }
+      // For now, just reload stock alerts
+      // In a real implementation, you might want to mark alerts as resolved in the database
+      await loadStockAlerts();
     } catch (error) {
       console.error('Error resolving alert:', error);
     }
@@ -238,14 +268,30 @@ interface StockAlert {
 
   const exportInventoryReport = async () => {
     try {
-      const csvContent = await inventoryService.exportInventoryReport();
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      const response = await apiService.getProducts();
+      if (response.data) {
+        // Create CSV content
+        const headers = ['Product ID', 'Product Name', 'Current Stock', 'Price', 'Category', 'Last Updated'];
+        const csvContent = [
+          headers.join(','),
+          ...response.data.map((product: any) => [
+            product.id,
+            product.name,
+            product.quantity,
+            product.price,
+            product.category?.name || 'N/A',
+            product.updated_at
+          ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
     } catch (error) {
       console.error('Error exporting inventory report:', error);
     }

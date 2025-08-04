@@ -21,6 +21,16 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  preview: {
+    host: "::",
+    port: 8080,
+    allowedHosts: [
+      "groove-norfolk-initiatives-episode.trycloudflare.com",
+      "t-er.onrender.com",
+      "amazing-unicorn-3f7416.netlify.app",
+      "nwdi-f872.onrender.com", // Add your Render host here
+    ],
+  },
   plugins: [
     react(),
     mode === 'development' &&

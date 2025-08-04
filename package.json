@@ -1,9 +1,9 @@
-git{
+{
   "name": "vite_react_shadcn_ts",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://nwdi-f872.onrender.com",
+  "homepage": ".",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

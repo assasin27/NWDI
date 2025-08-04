@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://cunquer5.github.io/T-ER",
+  "homepage": "https://github.com/assasin27/NWDI.git",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

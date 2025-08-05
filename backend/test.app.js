@@ -6,6 +6,25 @@ const customersRouter = require('./routes/customers');
 const notificationsRouter = require('./routes/notifications');
 const paymentsRouter = require('./routes/payments');
 
+// Mock localStorage for testing
+const localStorageMock = (() => {
+  let store = {};
+  return {
+    getItem: jest.fn((key) => store[key] || null),
+    setItem: jest.fn((key, value) => {
+      store[key] = value.toString();
+    }),
+    removeItem: jest.fn((key) => {
+      delete store[key];
+    }),
+    clear: jest.fn(() => {
+      store = {};
+    })
+  };
+})();
+
+global.localStorage = localStorageMock;
+
 const app = express();
 
 // Middleware

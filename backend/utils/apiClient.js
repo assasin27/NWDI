@@ -3,11 +3,34 @@ require('dotenv').config();
 
 const API_BASE_URL = process.env.DJANGO_API_URL || 'http://localhost:8000/api/v1';
 
-// Store tokens in memory (in production, use a secure storage solution)
-let authTokens = {
-  access: null,
-  refresh: null
-};
+// Storage for tokens - uses localStorage in browser, in-memory in Node.js
+let storage;
+
+if (typeof window !== 'undefined' && window.localStorage) {
+  // Browser environment
+  storage = {
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => window.localStorage.setItem(key, value),
+    removeItem: (key) => window.localStorage.removeItem(key),
+    clear: () => {
+      window.localStorage.removeItem('access_token');
+      window.localStorage.removeItem('refresh_token');
+    }
+  };
+} else {
+  // Node.js environment
+  let tokenStore = {
+    access_token: null,
+    refresh_token: null
+  };
+  
+  storage = {
+    getItem: (key) => tokenStore[key],
+    setItem: (key, value) => { tokenStore[key] = value; },
+    removeItem: (key) => { delete tokenStore[key]; },
+    clear: () => { tokenStore = { access_token: null, refresh_token: null }; }
+  };
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -19,8 +42,9 @@ const apiClient = axios.create({
 // Add request interceptor to add auth token to requests
 apiClient.interceptors.request.use(
   (config) => {
-    if (authTokens.access) {
-      config.headers.Authorization = `Bearer ${authTokens.access}`;
+    const token = storage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -38,25 +62,31 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       
       try {
+        const refreshToken = storage.getItem('refresh_token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        
         // Try to refresh the token
         const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-          refresh: authTokens.refresh
+          refresh: refreshToken
         });
         
-        // Update tokens
-        authTokens = {
-          access: response.data.access,
-          refresh: response.data.refresh || authTokens.refresh
-        };
+        // Update tokens in storage
+        const { access, refresh } = response.data;
+        storage.setItem('access_token', access);
+        if (refresh) {
+          storage.setItem('refresh_token', refresh);
+        }
         
         // Update the Authorization header
-        originalRequest.headers.Authorization = `Bearer ${authTokens.access}`;
+        originalRequest.headers.Authorization = `Bearer ${access}`;
         
         // Retry the original request
         return apiClient(originalRequest);
       } catch (refreshError) {
         // If refresh fails, clear tokens and reject
-        authTokens = { access: null, refresh: null };
+        storage.clear();
         return Promise.reject(refreshError);
       }
     }
@@ -66,23 +96,35 @@ apiClient.interceptors.response.use(
 );
 
 // Function to set authentication tokens
-const setAuthTokens = (tokens) => {
-  authTokens = { ...tokens };
+const setAuthTokens = ({ access, refresh }) => {
+  if (access) {
+    storage.setItem('access_token', access);
+  }
+  if (refresh) {
+    storage.setItem('refresh_token', refresh);
+  }
 };
 
 // Function to clear authentication tokens
 const clearAuthTokens = () => {
-  authTokens = { access: null, refresh: null };
+  storage.clear();
 };
 
 // Function to check if user is authenticated
 const isAuthenticated = () => {
-  return !!authTokens.access;
+  return !!storage.getItem('access_token');
 };
+
+// Function to get current tokens (for testing)
+const getAuthTokens = () => ({
+  access: storage.getItem('access_token'),
+  refresh: storage.getItem('refresh_token')
+});
 
 module.exports = {
   apiClient,
   setAuthTokens,
   clearAuthTokens,
-  isAuthenticated
+  isAuthenticated,
+  getAuthTokens // Exposed for testing
 };

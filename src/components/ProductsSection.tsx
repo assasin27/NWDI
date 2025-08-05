@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProductCard } from './ProductCard';
+import { VariantSelector } from './VariantSelector';
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
@@ -8,8 +9,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
-import { products, Product } from '../lib/productsData';
+import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, ShoppingCart, Heart } from 'lucide-react';
+import { products, Product, ProductVariant } from '../lib/productsData';
 
 const ProductsSection: React.FC = () => {
   const { addToCart } = useCart();
@@ -23,6 +24,11 @@ const ProductsSection: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('category');
   const [cartWishlistLoading, setCartWishlistLoading] = useState(false);
+  
+  // Variant selector state
+  const [showVariantSelector, setShowVariantSelector] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [variantAction, setVariantAction] = useState<'cart' | 'wishlist' | null>(null);
 
   const categories = ['all', ...Array.from(new Set(productsList.map(p => p.category)))];
   
@@ -108,17 +114,37 @@ const ProductsSection: React.FC = () => {
   };
 
   const handleAddToCart = async (product: Product) => {
-    if (userLoading) return;
+    if (userLoading) {
+      return;
+    }
     
     if (!user) {
       showNotification('Please log in to add items to cart', 'error');
       return;
     }
 
+    console.log('🔍 Debug: handleAddToCart called for product:', product.name);
+    console.log('🔍 Debug: Product has variants:', !!product.variants);
+    console.log('🔍 Debug: Variants:', product.variants);
+
+    // Check if product has variants
+    if (product.variants && product.variants.length > 0) {
+      console.log('🔍 Debug: Showing variant selector for cart');
+      setSelectedProduct(product);
+      setVariantAction('cart');
+      setShowVariantSelector(true);
+      return;
+    }
+
+    console.log('🔍 Debug: No variants, adding directly to cart');
     setCartWishlistLoading(true);
     try {
-      await addToCart(product);
-      showNotification('Item added to cart!', 'success');
+      const result = await addToCart(product);
+      if (result) {
+        showNotification('Item added to cart!', 'success');
+      } else {
+        showNotification('Failed to add item to cart', 'error');
+      }
     } catch (error) {
       showNotification('Failed to add item to cart', 'error');
     } finally {
@@ -134,10 +160,28 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
+    console.log('🔍 Debug: handleAddToWishlist called for product:', product.name);
+    console.log('🔍 Debug: Product has variants:', !!product.variants);
+    console.log('🔍 Debug: Variants:', product.variants);
+
+    // Check if product has variants
+    if (product.variants && product.variants.length > 0) {
+      console.log('🔍 Debug: Showing variant selector for wishlist');
+      setSelectedProduct(product);
+      setVariantAction('wishlist');
+      setShowVariantSelector(true);
+      return;
+    }
+
+    console.log('🔍 Debug: No variants, adding directly to wishlist');
     setCartWishlistLoading(true);
     try {
-      await addToWishlist(product);
-      showNotification('Item added to wishlist!', 'info');
+      const result = await addToWishlist(product);
+      if (result) {
+        showNotification('Item added to wishlist!', 'info');
+      } else {
+        showNotification('Failed to add item to wishlist', 'error');
+      }
     } catch (error) {
       showNotification('Failed to add item to wishlist', 'error');
     } finally {
@@ -157,15 +201,49 @@ const ProductsSection: React.FC = () => {
     }
   };
 
-  const handleVariantSelect = (productId: string, variant: string) => {
-    if (userLoading) return;
+  const handleVariantSelect = async (variant: ProductVariant) => {
+    if (!selectedProduct) return;
     
-    if (!user) {
-      showNotification('Please log in to select product variants', 'error');
-      return;
+    console.log('🔍 Debug: handleVariantSelect called');
+    console.log('🔍 Debug: Selected variant:', variant.name);
+    console.log('🔍 Debug: Variant action:', variantAction);
+    
+    setCartWishlistLoading(true);
+    try {
+      // Create a product with the selected variant
+      const productWithVariant = {
+        ...selectedProduct,
+        name: `${selectedProduct.name} - ${variant.name}`,
+        price: variant.price,
+        selectedVariant: variant
+      };
+
+      console.log('🔍 Debug: Product with variant:', productWithVariant);
+
+      if (variantAction === 'cart') {
+        console.log('🔍 Debug: Adding variant to cart');
+        await addToCart(productWithVariant);
+        showNotification(`${variant.name} variant added to cart!`, 'success');
+      } else if (variantAction === 'wishlist') {
+        console.log('🔍 Debug: Adding variant to wishlist');
+        await addToWishlist(productWithVariant);
+        showNotification(`${variant.name} variant added to wishlist!`, 'info');
+      }
+    } catch (error) {
+      console.error('🔍 Debug: Error in handleVariantSelect:', error);
+      showNotification(`Failed to add ${variant.name} variant`, 'error');
+    } finally {
+      setCartWishlistLoading(false);
+      setShowVariantSelector(false);
+      setSelectedProduct(null);
+      setVariantAction(null);
     }
-    
-    showNotification(`Selected ${variant} variant`, 'success');
+  };
+
+  const handleVariantClose = () => {
+    setShowVariantSelector(false);
+    setSelectedProduct(null);
+    setVariantAction(null);
   };
 
   const isWishlisted = (productId: string) => {
@@ -303,6 +381,16 @@ const ProductsSection: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Variant Selector Modal */}
+      {showVariantSelector && selectedProduct && (
+        <VariantSelector
+          product={selectedProduct}
+          onSelect={handleVariantSelect}
+          onClose={handleVariantClose}
+          productType={selectedProduct.name === 'Rice' ? 'rice' : 'dhoopbatti'}
+        />
+      )}
     </section>
   );
 };

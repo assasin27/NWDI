@@ -12,6 +12,7 @@ export interface Product {
   description: string;
   inStock: boolean;
   variants?: ProductVariant[];
+  selectedVariant?: ProductVariant;
 }
 
 export const products: Product[] = [

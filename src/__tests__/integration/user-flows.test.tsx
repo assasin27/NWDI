@@ -388,14 +388,14 @@ describe('User Flow Integration Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Basmati Rice')).toBeInTheDocument();
+        expect(screen.getByText('Rice')).toBeInTheDocument();
       });
 
       // Click add to cart for product with variants
       const addToCartButtons = screen.getAllByText('Add to Cart');
       const riceAddButton = addToCartButtons.find(button => 
         button.closest('[data-testid]')?.getAttribute('data-testid')?.includes('rice')
-      ) || addToCartButtons[1];
+      ) || addToCartButtons[0];
       
       fireEvent.click(riceAddButton);
 
@@ -441,24 +441,25 @@ describe('User Flow Integration Tests', () => {
 
       // Open variant selector
       const addToCartButtons = screen.getAllByText('Add to Cart');
-      fireEvent.click(addToCartButtons[1]); // Basmati Rice
+      fireEvent.click(addToCartButtons[0]); // Rice
 
       await waitFor(() => {
         expect(screen.getByText('Select grain length')).toBeInTheDocument();
       });
 
       // Select a variant
-      const shortGrainButton = screen.getByText('Short Grain').closest('button');
-      fireEvent.click(shortGrainButton!);
+      const indrayaniFullButton = screen.getByText('Indrayani Full').closest('button');
+      fireEvent.click(indrayaniFullButton!);
 
       await waitFor(() => {
         expect(mockAddToCart).toHaveBeenCalledWith({
-          id: 'product-2-Short Grain',
-          name: 'Basmati Rice - Short Grain',
-          price: 8.99,
-          image: '/images/rice.jpg',
+          id: 'rice',
+          name: 'Rice - Indrayani Full',
+          price: 100,
+          image: 'https://images.unsplash.com/photo-1534952219639-c19053940aa3?auto=format&fit=crop&w=400&q=80',
           category: 'Grains',
-          description: 'Premium quality basmati rice'
+          description: 'Premium quality rice varieties, perfect for daily cooking.',
+          selectedVariant: { name: 'Indrayani Full', price: 100 }
         });
       });
     });

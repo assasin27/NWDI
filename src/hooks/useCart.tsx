@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { cartService, CartItem } from "../lib/cartService";
 import { useSupabaseUser } from "../lib/useSupabaseUser";
+import { ProductVariant } from "../lib/productsData";
+import { errorHandler } from "../lib/errorHandler";
 
 // Interface for the cart items as used in the UI (without database-specific fields)
 export interface UICartItem {
@@ -13,6 +15,7 @@ export interface UICartItem {
   isOrganic?: boolean;
   inStock?: boolean;
   quantity: number;
+  selectedVariant?: ProductVariant;
 }
 
 interface CartContextType {
@@ -53,9 +56,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const cartItems = await cartService.getCartItems(user.id);
+      
       // Map database items to UI items
       const uiCartItems: UICartItem[] = cartItems.map(item => ({
-        id: item.product_id,
+        id: item.product_id, // Use product_id as the unique identifier
         name: item.name,
         price: item.price,
         image: item.image,
@@ -63,11 +67,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: item.description,
         isOrganic: item.is_organic,
         inStock: item.in_stock,
-        quantity: item.quantity
+        quantity: item.quantity,
+        selectedVariant: item.selectedVariant // This might be undefined from database
       }));
+      
       setCart(uiCartItems);
     } catch (error) {
-      console.error('Error loading cart:', error);
+      errorHandler.handleError(error as Error, 'useCart.loadCart');
     } finally {
       setLoading(false);
     }
@@ -75,28 +81,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = async (item: Omit<UICartItem, "quantity">): Promise<boolean> => {
     if (!user?.id) {
-      console.error('User not authenticated');
+      errorHandler.handleError('User not authenticated', 'useCart.addToCart');
       return false;
     }
 
     setLoading(true);
     try {
-      const success = await cartService.addToCart(user.id, {
-        id: item.id,
+      // Create a unique ID for the cart item that includes the variant
+      const uniqueCartItemId = item.selectedVariant 
+        ? `${item.id}-${item.selectedVariant.name}` 
+        : item.id;
+
+      const cartItemData = {
+        id: uniqueCartItemId, // Use unique ID for variant-specific items
         name: item.name,
         price: item.price,
         image: item.image,
         category: item.category,
         description: item.description,
         is_organic: item.isOrganic,
-        in_stock: item.inStock
-      });
+        in_stock: item.inStock,
+        selectedVariant: item.selectedVariant
+      };
+
+      const success = await cartService.addToCart(user.id, cartItemData);
+      
       if (success) {
         await loadCart(); // Reload cart to get updated state
       }
       return success;
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      errorHandler.handleError(error as Error, 'useCart.addToCart');
       return false;
     } finally {
       setLoading(false);

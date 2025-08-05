@@ -74,6 +74,23 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     showNotification('Item removed from cart', 'info');
   };
 
+  const handleClearCart = async () => {
+    if (cart.length === 0) {
+      showNotification('Cart is already empty', 'info');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await clearCart();
+      showNotification('Cart cleared successfully', 'success');
+    } catch (error) {
+      showNotification('Failed to clear cart', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddNewAddress = () => {
     if (!newAddress.houseBuilding || !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.pincode) {
       showNotification('Please fill in all required address fields', 'error');
@@ -174,9 +191,29 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
               <h2 className="text-xl font-semibold">Shopping Cart</h2>
               <Badge variant="secondary">{cart.length}</Badge>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {cart.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleClearCart}
+                  disabled={loading}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Clear
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Cart Items */}
@@ -189,7 +226,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
               </div>
             ) : (
               cart.map((item) => (
-                <Card key={item.id} className="p-4">
+                <Card
+                  key={item.id + (item.selectedVariant ? '-' + item.selectedVariant.name : '')}
+                  className="p-4 mb-4 border-2 border-green-200 shadow-md rounded-lg"
+                >
                   <CardContent className="p-0">
                     <div className="flex items-start gap-4">
                       {/* Product Image */}
@@ -205,6 +245,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                         <h3 className="font-medium text-gray-900 text-left mb-2 line-clamp-2">
                           {item.name}
                         </h3>
+                        {item.selectedVariant && (
+                          <div className="text-xs text-gray-700 mb-1">
+                            {item.category === 'Grains' || item.name.includes('Rice') ? 'Variety' : 'Fragrance'}: {item.selectedVariant.name}
+                          </div>
+                        )}
+                        {/* If no selectedVariant but name contains variant info, extract it */}
+                        {!item.selectedVariant && item.name.includes(' - ') && (
+                          <div className="text-xs text-gray-700 mb-1">
+                            {item.category === 'Grains' || item.name.includes('Rice') ? 'Variety' : 'Fragrance'}: {item.name.split(' - ')[1]}
+                          </div>
+                        )}
                         
                         {/* Category */}
                         <p className="text-sm text-gray-600 mb-3">{item.category}</p>

@@ -65,6 +65,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <h3 className="font-semibold text-gray-900 text-lg line-clamp-2">
             {product.name}
           </h3>
+          {product.selectedVariant && (
+            <div className="text-xs text-gray-700 mb-1">
+              {product.category === 'Grains' || product.name.includes('Rice') ? 'Variety' : 'Fragrance'}: {product.selectedVariant.name}
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <span className="text-lg font-bold text-green-600">₹{product.price}</span>
           </div>

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { wishlistService, WishlistItem } from "../lib/wishlistService";
 import { useSupabaseUser } from "../lib/useSupabaseUser";
+import { ProductVariant } from "../lib/productsData";
+import { errorHandler } from "../lib/errorHandler";
 
 // Interface for the wishlist items as used in the UI (without database-specific fields)
 export interface UIWishlistItem {
@@ -12,6 +14,7 @@ export interface UIWishlistItem {
   description: string;
   isOrganic?: boolean;
   inStock?: boolean;
+  selectedVariant?: ProductVariant;
 }
 
 interface WishlistContextType {
@@ -50,6 +53,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     setLoading(true);
     try {
+      // Test database connection first
+      const connectionTest = await wishlistService.testConnection();
+      
       const wishlistItems = await wishlistService.getWishlistItems(user.id);
       // Map database items to UI items
       const uiWishlistItems: UIWishlistItem[] = wishlistItems.map(item => ({
@@ -60,11 +66,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         category: item.category,
         description: item.description,
         isOrganic: item.is_organic,
-        inStock: item.in_stock
+        inStock: item.in_stock,
+        selectedVariant: item.selectedVariant
       }));
       setWishlist(uiWishlistItems);
     } catch (error) {
-      console.error('Error loading wishlist:', error);
+      errorHandler.handleError(error as Error, 'useWishlist.loadWishlist');
     } finally {
       setLoading(false);
     }
@@ -72,7 +79,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addToWishlist = async (item: UIWishlistItem): Promise<boolean> => {
     if (!user?.id) {
-      console.error('User not authenticated');
+      errorHandler.handleError('User not authenticated', 'useWishlist.addToWishlist');
       return false;
     }
 
@@ -86,14 +93,15 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         category: item.category,
         description: item.description,
         is_organic: item.isOrganic,
-        in_stock: item.inStock
+        in_stock: item.inStock,
+        selectedVariant: item.selectedVariant
       });
       if (success) {
         await loadWishlist(); // Reload wishlist to get updated state
       }
       return success;
     } catch (error) {
-      console.error('Error adding to wishlist:', error);
+      errorHandler.handleError(error as Error, 'useWishlist.addToWishlist');
       return false;
     } finally {
       setLoading(false);
@@ -102,7 +110,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const removeFromWishlist = async (id: string): Promise<boolean> => {
     if (!user?.id) {
-      console.error('User not authenticated');
+      errorHandler.handleError('User not authenticated', 'useWishlist.removeFromWishlist');
       return false;
     }
 
@@ -114,7 +122,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       return success;
     } catch (error) {
-      console.error('Error removing from wishlist:', error);
+      errorHandler.handleError(error as Error, 'useWishlist.removeFromWishlist');
       return false;
     } finally {
       setLoading(false);
@@ -123,7 +131,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const clearWishlist = async (): Promise<boolean> => {
     if (!user?.id) {
-      console.error('User not authenticated');
+      errorHandler.handleError('User not authenticated', 'useWishlist.clearWishlist');
       return false;
     }
 
@@ -135,7 +143,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       return success;
     } catch (error) {
-      console.error('Error clearing wishlist:', error);
+      errorHandler.handleError(error as Error, 'useWishlist.clearWishlist');
       return false;
     } finally {
       setLoading(false);

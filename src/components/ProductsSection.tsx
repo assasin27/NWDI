@@ -141,12 +141,12 @@ const ProductsSection: React.FC = () => {
     try {
       const result = await addToCart(product);
       if (result) {
-        showNotification('Item added to cart!', 'success');
+        showNotification(`${product.name} added to cart!`, 'success');
       } else {
-        showNotification('Failed to add item to cart', 'error');
+        showNotification(`Failed to add ${product.name} to cart`, 'error');
       }
     } catch (error) {
-      showNotification('Failed to add item to cart', 'error');
+      showNotification(`Failed to add ${product.name} to cart`, 'error');
     } finally {
       setCartWishlistLoading(false);
     }
@@ -178,12 +178,12 @@ const ProductsSection: React.FC = () => {
     try {
       const result = await addToWishlist(product);
       if (result) {
-        showNotification('Item added to wishlist!', 'info');
+        showNotification(`${product.name} added to wishlist!`, 'info');
       } else {
-        showNotification('Failed to add item to wishlist', 'error');
+        showNotification(`Failed to add ${product.name} to wishlist`, 'error');
       }
     } catch (error) {
-      showNotification('Failed to add item to wishlist', 'error');
+      showNotification(`Failed to add ${product.name} to wishlist`, 'error');
     } finally {
       setCartWishlistLoading(false);
     }
@@ -193,9 +193,15 @@ const ProductsSection: React.FC = () => {
     setCartWishlistLoading(true);
     try {
       await removeFromWishlist(productId);
-      showNotification('Item removed from wishlist', 'info');
+      // Find the product name for the notification
+      const product = products.find(p => p.id === productId);
+      const productName = product ? product.name : 'Item';
+      showNotification(`${productName} removed from wishlist`, 'info');
     } catch (error) {
-      showNotification('Failed to remove item from wishlist', 'error');
+      // Find the product name for the error notification
+      const product = products.find(p => p.id === productId);
+      const productName = product ? product.name : 'Item';
+      showNotification(`Failed to remove ${productName} from wishlist`, 'error');
     } finally {
       setCartWishlistLoading(false);
     }

@@ -25,7 +25,7 @@ const Wishlist: React.FC = () => {
     }
 
     addToCart(product);
-    showNotification('Item added to cart!', 'success');
+    showNotification(`${product.name} added to cart!`, 'success');
   };
 
   const handleAddToWishlist = (product: Product) => {
@@ -41,7 +41,7 @@ const Wishlist: React.FC = () => {
 
   const handleRemoveFromWishlist = (product: Product) => {
     removeFromWishlist(product.id);
-    showNotification('Item removed from wishlist', 'info');
+    showNotification(`${product.name} removed from wishlist`, 'info');
   };
 
   const handleClearWishlist = async () => {

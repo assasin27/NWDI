@@ -62,16 +62,22 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
+      // Find the product name before removing
+      const item = cart.find(cartItem => cartItem.id === itemId);
+      const productName = item ? item.name : 'Item';
       removeFromCart(itemId);
-      showNotification('Item removed from cart', 'info');
+      showNotification(`${productName} removed from cart`, 'info');
     } else {
       updateQuantity(itemId, newQuantity);
     }
   };
 
   const handleRemoveItem = (itemId: string) => {
+    // Find the product name before removing
+    const item = cart.find(cartItem => cartItem.id === itemId);
+    const productName = item ? item.name : 'Item';
     removeFromCart(itemId);
-    showNotification('Item removed from cart', 'info');
+    showNotification(`${productName} removed from cart`, 'info');
   };
 
   const handleClearCart = async () => {

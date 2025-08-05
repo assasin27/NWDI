@@ -15,6 +15,7 @@ CREATE TABLE cart_items (
   is_organic BOOLEAN DEFAULT false,
   in_stock BOOLEAN DEFAULT true,
   quantity INTEGER NOT NULL DEFAULT 1,
+  selectedVariant JSONB,  -- Store variant information as JSON
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -31,6 +32,7 @@ CREATE TABLE wishlist_items (
   description TEXT,
   is_organic BOOLEAN DEFAULT false,
   in_stock BOOLEAN DEFAULT true,
+  selectedVariant JSONB,  -- Store variant information as JSON
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

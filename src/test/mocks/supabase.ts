@@ -1,21 +1,25 @@
-export const mockSupabaseClient = {
+export const supabase = {
   auth: {
-    getUser: vi.fn(),
-    signInWithPassword: vi.fn(),
-    signOut: vi.fn(),
-    onAuthStateChange: vi.fn(),
+    getUser: jest.fn(),
+    onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    signOut: jest.fn()
   },
-  from: vi.fn(() => ({
-    select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    then: vi.fn().mockResolvedValue({ data: [], error: null }),
-  })),
+  from: jest.fn(() => ({
+    select: jest.fn(() => ({
+      eq: jest.fn(() => ({
+        single: jest.fn(),
+        limit: jest.fn()
+      })),
+      limit: jest.fn()
+    })),
+    insert: jest.fn(),
+    update: jest.fn(() => ({
+      eq: jest.fn()
+    })),
+    delete: jest.fn(() => ({
+      eq: jest.fn()
+    }))
+  }))
 };
 
 export const mockUser = {

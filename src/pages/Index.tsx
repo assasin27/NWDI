@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import Layout from '../components/Layout';
 import Hero from '../components/Hero';
 import ProductsSection from '../components/ProductsSection';
 import { AboutSection } from '../components/AboutSection';
@@ -26,13 +27,15 @@ const Index: React.FC = () => {
   }, [location.state]);
 
   return (
-    <div className="scroll-smooth">
-      <Hero />
-      <ProductsSection />
-      <AboutSection />
-      <ContactSection />
-      <Footer />
-    </div>
+    <Layout>
+      <div className="scroll-smooth">
+        <Hero />
+        <ProductsSection />
+        <AboutSection />
+        <ContactSection />
+        <Footer />
+      </div>
+    </Layout>
   );
 };
 

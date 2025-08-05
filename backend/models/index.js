@@ -1,13 +1,4 @@
-const { Sequelize } = require('sequelize');
-require('dotenv').config();
-
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
+// Deprecated: All database logic has been moved to Django backend. This file is intentionally left blank.
     logging: false,
   }
 );

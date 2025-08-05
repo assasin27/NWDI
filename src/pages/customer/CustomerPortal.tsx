@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
-import { CartDrawer } from '@/components/CartDrawer';
+import CartDrawer from '@/components/CartDrawer';
 import { CartProvider } from '@/hooks/useCart';
 import { WishlistProvider } from '@/hooks/useWishlist';
 import Index from '@/pages/Index';

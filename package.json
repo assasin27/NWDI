@@ -14,8 +14,8 @@
     "preview": "vite preview",
     "predeploy": "npm run build:prod && npm run test:security",
     "deploy": "npm run build:prod && npm run test:security",
-    "deploy:docker": "docker-compose -f docker-compose.prod.yml up -d --build",
-    "deploy:docker:build": "docker build -t farmfresh-frontend .",
+    "deploy:render": "npm run build:prod",
+
     "setup-deployment": "node setup-deployment.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -42,8 +42,8 @@
     "security:audit": "npm audit && npm audit --audit-level=moderate",
     "security:scan": "npm run test:security && npm run security:audit",
     "security:fix": "npm audit fix",
-    "start": "node server.js",
-    "health": "curl -f http://localhost:8080/health || exit 1"
+    "start": "node server.js"
+
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

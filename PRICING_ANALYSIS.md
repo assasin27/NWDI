@@ -223,7 +223,7 @@
 - **Modern React 18:** Faster development, better performance
 - **TypeScript:** Reduced bugs, better maintainability
 - **Supabase:** Cost-effective backend solution
-- **Docker:** Easy deployment and scaling
+- **Render:** Easy deployment and scaling
 
 #### **2. Development Efficiency:**
 - **Reusable Components:** 40% faster development

@@ -1,9 +1,14 @@
 services:
   - type: web
-    name: nareshwadi-frontend
+    name: farmfresh-frontend
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: NPM_VERSION
+        value: 9.6.7
     routes:
       - type: rewrite
         source: /*

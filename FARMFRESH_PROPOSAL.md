@@ -77,7 +77,7 @@ FarmFresh provides a complete dual-portal e-commerce platform that directly conn
 - **JWT Authentication** for secure access
 
 ### **Infrastructure:**
-- **Docker** containerization for easy deployment
+- **Render** deployment for easy hosting
 - **GitHub Pages** ready for hosting
 - **Comprehensive testing** with Jest and React Testing Library
 - **Security audit** implementation

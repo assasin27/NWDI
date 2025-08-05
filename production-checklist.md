@@ -70,12 +70,12 @@ npm run test:security
 
 ### 4. Deploy
 ```bash
-# Option A: Docker Compose
-docker-compose -f docker-compose.prod.yml up -d --build
+# Render deployment
+git add .
+git commit -m "Deploy to production"
+git push
 
-# Option B: Manual deployment
-# Copy dist/ to web server
-sudo cp -r dist/* /var/www/farmfresh/
+# Verify deployment in Render dashboard
 ```
 
 ## ✅ Post-Deployment Verification
@@ -152,7 +152,7 @@ sudo cp -r dist/* /var/www/farmfresh/
 
 ```bash
 # Quick deployment
-npm run deploy:docker
+npm run deploy:render
 
 # Security audit
 npm run security:scan
@@ -160,14 +160,12 @@ npm run security:scan
 # Performance test
 npm run test:coverage
 
-# Health check
-curl -f http://localhost:8080/health
+# Build locally
+npm run build
 
-# View logs
-docker-compose -f docker-compose.prod.yml logs -f
+# Preview locally
+npm run preview
 
-# Monitor resources
-docker stats
 ```
 
 ## 🚨 Emergency Contacts

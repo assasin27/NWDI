@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
@@ -28,11 +28,12 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov', 'html'],
   coverageDirectory: 'coverage',
-  setupFiles: ['<rootDir>/src/test/setup.ts'],
-  globals: {
-    'ts-jest': {
+  transform: {
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
-    },
+    }]
+  },
+  globals: {
     'import.meta': {
       env: {
         VITE_SUPABASE_URL: 'https://test.supabase.co',

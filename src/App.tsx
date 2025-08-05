@@ -91,6 +91,7 @@ function App() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/customer" element={<CustomerPortal />} />
                   <Route path="/farmer" element={<FarmerPortal />} />
+                  <Route path="/farmer/login" element={<FarmerPortal />} />
                   <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
                   <Route path="/farmer/add-product" element={<AddProduct />} />
                   <Route path="*" element={<NotFound />} />

@@ -1,25 +1,25 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+
 import NavBar from '../NavBar';
 import { CartProvider } from '../../hooks/useCart';
 import { WishlistProvider } from '../../hooks/useWishlist';
 
 // Mock the hooks
-vi.mock('../../hooks/useCart', () => ({
+jest.mock('../../hooks/useCart', () => ({
   useCart: () => ({
     cartItems: [],
   }),
 }));
 
-vi.mock('../../hooks/useWishlist', () => ({
+jest.mock('../../hooks/useWishlist', () => ({
   useWishlist: () => ({
     wishlistItems: [],
   }),
 }));
 
-vi.mock('../../lib/useSupabaseUser', () => ({
+jest.mock('../../lib/useSupabaseUser', () => ({
   useSupabaseUser: () => ({
     user: null,
     loading: false,
@@ -40,7 +40,7 @@ const renderNavBar = () => {
 
 describe('NavBar Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('Rendering', () => {

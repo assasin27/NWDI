@@ -1,27 +1,27 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+
 import ProductsSection from '../ProductsSection';
 import { CartProvider } from '../../hooks/useCart';
 import { WishlistProvider } from '../../hooks/useWishlist';
 
 // Mock the hooks
-vi.mock('../../hooks/useCart', () => ({
+jest.mock('../../hooks/useCart', () => ({
   useCart: () => ({
-    addToCart: vi.fn(),
+    addToCart: jest.fn(),
   }),
 }));
 
-vi.mock('../../hooks/useWishlist', () => ({
+jest.mock('../../hooks/useWishlist', () => ({
   useWishlist: () => ({
-    addToWishlist: vi.fn(),
-    removeFromWishlist: vi.fn(),
+    addToWishlist: jest.fn(),
+    removeFromWishlist: jest.fn(),
     wishlist: [],
   }),
 }));
 
-vi.mock('../../lib/useSupabaseUser', () => ({
+jest.mock('../../lib/useSupabaseUser', () => ({
   useSupabaseUser: () => ({
     user: null,
     loading: false,
@@ -42,7 +42,7 @@ const renderProductsSection = () => {
 
 describe('ProductsSection Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('Rendering', () => {

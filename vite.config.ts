@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       port: 8080,
       host: true,
-      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com ", 'localhost', '127.0.0.1'],
+      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1'],
     }
   }
 })

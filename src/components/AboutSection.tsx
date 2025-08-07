@@ -6,6 +6,7 @@ import farmerImage from "@/assets/farmer-portrait.jpg";
 import fruitsImg from "@/assets/fruits.jpg";
 import vegetablesImg from "@/assets/vegetables.jpg";
 import heroFarm from "@/assets/hero-farm.jpg";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 const features = [
   {
@@ -128,6 +129,43 @@ export const AboutSection = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="mb-16 max-w-2xl mx-auto">
+          <h3 className="text-2xl font-bold text-center mb-6">Frequently Asked Questions</h3>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="q1">
+              <AccordionTrigger>What makes Nareshwadi Products unique?</AccordionTrigger>
+              <AccordionContent>
+                Our products are handmade by local youth and students using waste wood and traditional Warli art, supporting both the environment and the community.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q2">
+              <AccordionTrigger>Are all products organic and eco-friendly?</AccordionTrigger>
+              <AccordionContent>
+                Yes, we prioritize organic, eco-friendly, and sustainable practices in all our products, from farm produce to handcrafted items.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q3">
+              <AccordionTrigger>How does my purchase help the community?</AccordionTrigger>
+              <AccordionContent>
+                Every purchase supports the education and economic independence of rural youth, and helps preserve the Warli art heritage.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q4">
+              <AccordionTrigger>How can I place a bulk or custom order?</AccordionTrigger>
+              <AccordionContent>
+                Please use the contact form or email us directly for bulk or custom orders. We are happy to accommodate special requests!
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q5">
+              <AccordionTrigger>How do I get updates on new products?</AccordionTrigger>
+              <AccordionContent>
+                Subscribe to our newsletter in the Contact section to receive updates on new products, offers, and impact stories.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Farmer Spotlight */}

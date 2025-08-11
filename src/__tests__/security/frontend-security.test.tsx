@@ -3,7 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import Login from '@/pages/Login';
 import ProductsSection from '@/components/ProductsSection';
 import ProductCard from '@/components/ProductCard';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/supabaseClient';
 
 // Mock Supabase client
 jest.mock('@/integrations/supabase/client', () => ({

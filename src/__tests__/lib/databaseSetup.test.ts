@@ -1,5 +1,5 @@
 import { databaseSetup } from '@/lib/databaseSetup';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/supabaseClient';
 
 // Mock Supabase client
 jest.mock('@/integrations/supabase/client', () => ({

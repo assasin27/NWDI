@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/supabaseClient';
 
 export const testFarmerLogin = async () => {
   try {

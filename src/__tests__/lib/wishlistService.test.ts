@@ -1,5 +1,5 @@
 import { wishlistService, WishlistItem } from '@/lib/wishlistService';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/supabaseClient';
 
 // Mock the Supabase client
 jest.mock('@/integrations/supabase/client', () => {

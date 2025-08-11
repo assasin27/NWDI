@@ -1,5 +1,5 @@
 import { cartService, CartItem } from '@/lib/cartService';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/supabaseClient';
 
 // Mock the Supabase client
 const mockQueryBuilder = {

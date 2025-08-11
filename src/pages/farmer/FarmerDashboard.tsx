@@ -320,115 +320,122 @@ interface StockAlert {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
-      <div className="px-4 py-8">
+      <div className="px-3 sm:px-4 lg:px-8 py-6 sm:py-8">
       {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Farmer Dashboard</h1>
-            <p className="text-gray-600">Manage your products, orders, and inventory</p>
-            </div>
-          <div className="flex gap-4">
-              <Button
-                onClick={() => navigate('/farmer/add-product')}
-              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-              >
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Farmer Dashboard</h1>
+            <p className="text-gray-600 text-sm lg:text-base">Manage your products, orders, and inventory</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 lg:gap-4 w-full lg:w-auto">
+            <Button
+              onClick={() => navigate('/farmer/add-product')}
+              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-              <Button
+              Add Product
+            </Button>
+            <Button
               variant="outline"
               onClick={exportInventoryReport}
+              className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4 mr-2" />
               Export Report
             </Button>
             <Button
-                variant="outline"
+              variant="outline"
               onClick={() => navigate('/farmer')}
-              >
+              className="w-full sm:w-auto"
+            >
               <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+              Logout
+            </Button>
+          </div>
         </div>
-      </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
           <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <IndianRupee className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+                <IndianRupee className="h-4 w-4 lg:h-5 lg:w-5" />
                 Total Revenue
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
-              <p className="text-green-100 text-sm">All time earnings</p>
+              <div className="text-xl lg:text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
+              <p className="text-green-100 text-xs lg:text-sm">All time earnings</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+                <ShoppingCart className="h-4 w-4 lg:h-5 lg:w-5" />
                 Total Orders
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders}</div>
-              <p className="text-blue-100 text-sm">Orders received</p>
+              <div className="text-xl lg:text-2xl font-bold">{stats.totalOrders}</div>
+              <p className="text-blue-100 text-xs lg:text-sm">Orders received</p>
             </CardContent>
           </Card>
           
           <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+                <Package className="h-4 w-4 lg:h-5 lg:w-5" />
                 Products
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProducts}</div>
-              <p className="text-yellow-100 text-sm">Active products</p>
+              <div className="text-xl lg:text-2xl font-bold">{stats.totalProducts}</div>
+              <p className="text-yellow-100 text-xs lg:text-sm">Active products</p>
             </CardContent>
           </Card>
           
           <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+                <AlertTriangle className="h-4 w-4 lg:h-5 lg:w-5" />
                 Stock Alerts
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stockAlerts.length}</div>
-              <p className="text-red-100 text-sm">Need attention</p>
+              <div className="text-xl lg:text-2xl font-bold">{stockAlerts.length}</div>
+              <p className="text-red-100 text-xs lg:text-sm">Need attention</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Overview
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <TabsTrigger value="overview" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Overview</span>
+              <span className="sm:hidden">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Orders
+            <TabsTrigger value="orders" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Orders</span>
+              <span className="sm:hidden">Orders</span>
             </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Inventory
+            <TabsTrigger value="inventory" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Inventory</span>
+              <span className="sm:hidden">Inventory</span>
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Alerts
+            <TabsTrigger value="alerts" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Alerts</span>
+              <span className="sm:hidden">Alerts</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
+            <TabsTrigger value="settings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Settings</span>
+              <span className="sm:hidden">Settings</span>
             </TabsTrigger>
           </TabsList>
 

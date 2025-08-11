@@ -112,36 +112,37 @@ const AddProduct: React.FC = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center h-auto sm:h-16 py-4 sm:py-0">
+            <div className="flex items-center mb-4 sm:mb-0">
               <Button
                 onClick={() => navigate('/farmer/dashboard')}
                 variant="ghost"
                 className="mr-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
               </Button>
               <Package className="w-8 h-8 text-orange-600 mr-3" />
-              <h1 className="text-2xl font-bold text-orange-800">Add New Product</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-orange-800">Add New Product</h1>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 lg:px-8 py-6 sm:py-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl text-orange-800">Product Information</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl text-orange-800">Product Information</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
               Add a new product that will be available to customers
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" autoComplete="on">
               {/* Product Name */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-orange-700">Product Name *</Label>
+                <Label htmlFor="name" className="text-orange-700 text-sm sm:text-base">Product Name *</Label>
                 <Input
                   id="name"
                   name="name"
@@ -150,14 +151,15 @@ const AddProduct: React.FC = () => {
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="e.g., Fresh Tomatoes"
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               {/* Category */}
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-orange-700">Category *</Label>
+                <Label htmlFor="category" className="text-orange-700 text-sm sm:text-base">Category *</Label>
                 <Select value={form.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger id="category" name="category" autoComplete="off">
+                  <SelectTrigger id="category" name="category" autoComplete="off" className="text-sm sm:text-base">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -172,7 +174,7 @@ const AddProduct: React.FC = () => {
 
               {/* Price */}
               <div className="space-y-2">
-                <Label htmlFor="price" className="text-orange-700">Price (₹) *</Label>
+                <Label htmlFor="price" className="text-orange-700 text-sm sm:text-base">Price (₹) *</Label>
                 <Input
                   id="price"
                   name="price"
@@ -183,12 +185,13 @@ const AddProduct: React.FC = () => {
                   onChange={(e) => handleInputChange('price', e.target.value)}
                   placeholder="e.g., 50.00"
                   required
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-orange-700">Description</Label>
+                <Label htmlFor="description" className="text-orange-700 text-sm sm:text-base">Description</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -197,13 +200,14 @@ const AddProduct: React.FC = () => {
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Describe your product..."
                   rows={3}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               {/* Image */}
               <div className="space-y-2">
-                <Label htmlFor="image" className="text-orange-700">Product Image URL</Label>
-                <div className="flex space-x-2">
+                <Label htmlFor="image" className="text-orange-700 text-sm sm:text-base">Product Image URL</Label>
+                <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2">
                   <Input
                     id="image"
                     name="image"
@@ -211,13 +215,14 @@ const AddProduct: React.FC = () => {
                     value={form.image}
                     onChange={(e) => handleInputChange('image', e.target.value)}
                     placeholder="Image URL or search for image"
+                    className="text-sm sm:text-base"
                   />
                   <Button
                     type="button"
                     onClick={() => searchImage(form.name)}
                     disabled={!form.name}
                     variant="outline"
-                    className="whitespace-nowrap"
+                    className="whitespace-nowrap text-sm sm:text-base"
                   >
                     <Search className="w-4 h-4 mr-2" />
                     Search

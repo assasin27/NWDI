@@ -28,7 +28,7 @@
 - **Our Rate:** ₹50,000 (33% discount)
 - **Justification:** 
   - Separate customer and farmer interfaces
-  - Complex authentication system
+  - authentication system
   - Real-time data synchronization
   - Row Level Security implementation
 

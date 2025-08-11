@@ -1,11 +1,4 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('./index');
-const Category = require('./category');
-
-const Product = sequelize.define('Product', {
-  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  name: { type: DataTypes.STRING, allowNull: false },
-  description: { type: DataTypes.TEXT },
+// Deprecated: All database logic has been moved to Django backend. This file is intentionally left blank.
   price: { type: DataTypes.FLOAT, allowNull: false },
   image: { type: DataTypes.STRING },
   inventory: { type: DataTypes.INTEGER, defaultValue: 0 },

@@ -1,52 +1,61 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import { defineConfig, loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  base: '/',
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react()],
+    base: '/',
+    define: {
+      'process.env': { ...process.env, ...env },
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY)
     },
-  },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          ui: ['lucide-react'],
-        },
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name?.split('.') || []
-          const ext = info[info.length - 1]
-          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-            return `assets/images/[name]-[hash][extname]`
-          }
-          if (/woff2?|eot|ttf|otf/i.test(ext)) {
-            return `assets/fonts/[name]-[hash][extname]`
-          }
-          return `assets/[name]-[hash][extname]`
-        },
-        chunkFileNames: 'assets/js/[name]-[hash].js',
-        entryFileNames: 'assets/js/[name]-[hash].js',
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
       },
     },
-    chunkSizeWarningLimit: 1000,
-  },
-  server: {
-    port: 3000,
-    host: true,
-    allowedHosts: ['nwdi.onrender.com', 'localhost', '127.0.0.1'],
-  },
-  preview: {
-    port: 8080,
-    host: true,
-    allowedHosts: ['nwdi.onrender.com', 'localhost', '127.0.0.1'],
-  },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            router: ['react-router-dom'],
+            ui: ['lucide-react'],
+          },
+          assetFileNames: (assetInfo) => {
+            const info = assetInfo.name?.split('.') || []
+            const ext = info[info.length - 1]
+            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+              return `assets/images/[name]-[hash][extname]`
+            }
+            if (/woff2?|eot|ttf|otf/i.test(ext)) {
+              return `assets/fonts/[name]-[hash][extname]`
+            }
+            return `assets/[name]-[hash][extname]`
+          },
+          chunkFileNames: 'assets/js/[name]-[hash].js',
+          entryFileNames: 'assets/js/[name]-[hash].js',
+        },
+      },
+    },
+    server: {
+      port: 3000,
+      host: true,
+      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1'],
+    },
+    preview: {
+      port: 8080,
+      host: true,
+      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1'],
+    }
+  }
 })

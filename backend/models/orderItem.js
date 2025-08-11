@@ -1,11 +1,4 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('./index');
-const Order = require('./order');
-const Product = require('./product');
-
-const OrderItem = sequelize.define('OrderItem', {
-  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  orderId: { type: DataTypes.INTEGER, references: { model: Order, key: 'id' } },
+// Deprecated: All database logic has been moved to Django backend. This file is intentionally left blank.
   productId: { type: DataTypes.INTEGER, references: { model: Product, key: 'id' } },
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.FLOAT, allowNull: false },

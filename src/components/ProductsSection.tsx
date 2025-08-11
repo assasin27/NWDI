@@ -11,6 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, ShoppingCart, Heart } from 'lucide-react';
 import { products, Product, ProductVariant } from '../lib/productsData';
+import heroFarm from '../assets/hero-farm.jpg';
+import fruitsImg from '../assets/fruits.jpg';
+import vegetablesImg from '../assets/vegetables.jpg';
+import farmerPortrait from '../assets/farmer-portrait.jpg';
 
 const ProductsSection: React.FC = () => {
   const { addToCart } = useCart();
@@ -259,6 +263,23 @@ const ProductsSection: React.FC = () => {
   return (
     <section id="products" className="py-16 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
       <div className="px-4">
+        {/* Visual Banner */}
+        <div className="mb-12 flex justify-center">
+          <img src={heroFarm} alt="Nareshwadi Farm" className="rounded-2xl shadow-lg w-full max-w-3xl object-cover h-64" />
+        </div>
+
+        {/* Category Highlights */}
+        <div className="mb-8 flex flex-col md:flex-row gap-6 justify-center items-center">
+          <div className="flex flex-col items-center">
+            <img src={fruitsImg} alt="Fresh Fruits" className="rounded-xl shadow w-40 h-28 object-cover mb-2" />
+            <span className="text-green-700 font-semibold">Fruits</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <img src={vegetablesImg} alt="Organic Vegetables" className="rounded-xl shadow w-40 h-28 object-cover mb-2" />
+            <span className="text-green-700 font-semibold">Vegetables</span>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Products</h2>
@@ -374,6 +395,7 @@ const ProductsSection: React.FC = () => {
                 onRemoveFromWishlist={() => handleRemoveFromWishlist(product.id)}
                 isWishlisted={isWishlisted(product.id)}
                 loading={cartWishlistLoading || userLoading}
+                impactBadge="Supports a child for a week"
               />
             ))}
           </div>

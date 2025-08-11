@@ -1,10 +1,23 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { ArrowRight, Leaf, ShoppingCart, Users, Package } from 'lucide-react';
+import heroFarm from '../assets/hero-farm.jpg';
+import fruitsImg from '../assets/fruits.jpg';
+import vegetablesImg from '../assets/vegetables.jpg';
+import farmerPortrait from '../assets/farmer-portrait.jpg';
 
 const Hero: React.FC = () => {
   return (
     <section id="home" className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100 overflow-hidden min-h-screen flex items-center justify-center">
+      {/* Background Image */}
+      <div className="absolute inset-0 opacity-20">
+        <img 
+          src={heroFarm} 
+          alt="Nareshwadi Farm Background" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+
       {/* Enhanced Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
@@ -12,10 +25,16 @@ const Hero: React.FC = () => {
         }} />
       </div>
 
-      {/* Floating Elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-br from-green-400 to-blue-400 rounded-full opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-20 right-10 w-32 h-32 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full opacity-20 animate-pulse delay-1000"></div>
-      <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full opacity-20 animate-pulse delay-500"></div>
+      {/* Floating Product Images */}
+      <div className="absolute top-20 left-10 w-32 h-32 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse">
+        <img src={fruitsImg} alt="Fresh Fruits" className="w-full h-full object-cover" />
+      </div>
+      <div className="absolute bottom-20 right-10 w-40 h-40 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse delay-1000">
+        <img src={vegetablesImg} alt="Organic Vegetables" className="w-full h-full object-cover" />
+      </div>
+      <div className="absolute top-1/2 left-1/4 w-28 h-28 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse delay-500">
+        <img src={farmerPortrait} alt="Nareshwadi Farmer" className="w-full h-full object-cover" />
+      </div>
 
       {/* Main Content Container */}
       <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
@@ -83,6 +102,19 @@ const Hero: React.FC = () => {
               }}
             >
               Learn More
+            </Button>
+            <Button
+              variant="default"
+              size="lg"
+              className="bg-orange-600 hover:bg-orange-700 text-white px-10 py-4 text-xl font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+              onClick={() => {
+                const donateSection = document.getElementById('donate');
+                if (donateSection) {
+                  donateSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+            >
+              Support Us
             </Button>
           </div>
           

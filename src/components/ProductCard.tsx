@@ -10,7 +10,8 @@ interface ProductCardProps {
   onAddToWishlist: () => void;
   onRemoveFromWishlist: () => void;
   isWishlisted: boolean;
-  loading?: boolean;
+  loading: boolean;
+  impactBadge?: string;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -19,7 +20,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToWishlist,
   onRemoveFromWishlist,
   isWishlisted,
-  loading = false
+  loading,
+  impactBadge
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -43,6 +45,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {impactBadge && (
+        <div className="mb-2">
+          <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">
+            {impactBadge}
+          </span>
+        </div>
+      )}
       {/* Product Image */}
       <div className="relative aspect-square overflow-hidden">
         <img

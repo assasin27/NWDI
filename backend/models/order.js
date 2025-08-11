@@ -1,11 +1,4 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('./index');
-const Customer = require('./customer');
-
-const Order = sequelize.define('Order', {
-  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  status: { type: DataTypes.ENUM('pending', 'shipped', 'delivered', 'cancelled'), defaultValue: 'pending' },
-  total: { type: DataTypes.FLOAT, allowNull: false },
+// Deprecated: All database logic has been moved to Django backend. This file is intentionally left blank.
   customerId: { type: DataTypes.INTEGER, references: { model: Customer, key: 'id' } },
   shippingAddress: { type: DataTypes.STRING, allowNull: false },
 });

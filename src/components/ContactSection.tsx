@@ -253,6 +253,32 @@ Message: ${formData.message}
             </div>
           </div>
         </div>
+
+        {/* Newsletter Signup */}
+        <div className="mt-16 max-w-2xl mx-auto text-center bg-green-50 rounded-xl p-8 shadow">
+          <h3 className="text-2xl font-bold text-green-800 mb-4">Stay Updated!</h3>
+          <p className="text-gray-700 mb-6">Subscribe to get updates on new products, offers, and Nareshwadi impact stories.</p>
+          <form
+            className="flex flex-col sm:flex-row gap-4 items-center justify-center"
+            onSubmit={e => {
+              e.preventDefault();
+              alert('Thank you for subscribing!');
+            }}
+          >
+            <input
+              type="email"
+              required
+              placeholder="Your email address"
+              className="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 w-full sm:w-auto"
+            />
+            <button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition-colors"
+            >
+              Subscribe
+            </button>
+          </form>
+        </div>
       </div>
     </section>
   );

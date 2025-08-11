@@ -8,7 +8,7 @@ FarmFresh is now a dual-portal e-commerce platform that connects farmers directl
 2. **Customer Portal** - Complete e-commerce functionality
 3. **Farmer Portal** - Order management and product management
 
-## **🏗️ Architecture**
+## **🏗️Architecture**
 
 ### **Frontend Structure:**
 ```

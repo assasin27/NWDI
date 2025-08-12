@@ -1,4 +1,4 @@
-# FarmFresh Dual-Portal E-Commerce Platform
+# Nareshwadi Products Dual-Portal E-Commerce Platform
 
 ## Overview
 FarmFresh (Nareshwadi Products) is a modern, production-ready dual-portal e-commerce platform that connects farmers directly to customers. It eliminates middlemen, empowers rural producers, and provides a seamless, secure, and scalable digital marketplace for fresh farm goods.

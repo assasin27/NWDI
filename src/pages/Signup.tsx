@@ -76,9 +76,19 @@ const Signup: React.FC = () => {
 
       if (error) {
         setError(error.message);
+      } else if (!data.user) {
+        // Email confirmation required
+        setSuccess(
+          "==============================\n" +
+          "Sign up successful!\n" +
+          "To complete authentication, open Gmail (or your email app) and click the confirmation link we sent you.\n" +
+          "You must confirm your email before you can log in.\n" +
+          "=============================="
+        );
+        setStep(1); // Stay on the signup step
       } else {
         setUser(data.user);
-        setSuccess('Account created successfully! Now let\'s add your delivery address.');
+        setSuccess("Account created successfully! Now let's add your delivery address.");
         setStep(2);
       }
     } catch (err) {

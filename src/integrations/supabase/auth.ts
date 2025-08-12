@@ -43,26 +43,16 @@ export const signUp = async (userData: SignUpData): Promise<UserProfile> => {
 
   // If email confirmation is required, authData.user will be null
   if (!authData.user) {
-    throw new Error('Sign up successful! Please check your email to confirm your account before logging in.');
+    throw new Error(
+      '\n==============================\n' +
+      'Sign up successful!\n' +
+      'To complete authentication, open Gmail (or your email app) and click the confirmation link we sent you.\n' +
+      'You must confirm your email before you can log in.\n' +
+      '==============================\n'
+    );
   }
 
-  // Create user in the public.users table
-  const { error: profileError } = await supabase.from('users').insert([
-    {
-      id: authData.user.id,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      is_seller: isSeller,
-    },
-  ]);
-
-  if (profileError) {
-    // Clean up auth user if profile creation fails
-    await supabase.auth.admin.deleteUser(authData.user.id);
-    throw profileError;
-  }
-
+  // Do not insert into users table here; wait until login
   return {
     id: authData.user.id,
     email: authData.user.email!,
@@ -86,14 +76,34 @@ export const login = async ({ email, password }: LoginData): Promise<UserProfile
     throw new Error('No user returned after login');
   }
 
-  // Get the full user profile
-  const { data: userData, error: profileError } = await supabase
+  // Check if user profile exists in users table
+  let { data: userData, error: profileError } = await supabase
     .from('users')
     .select('*')
     .eq('id', data.user.id)
     .single();
 
-  if (profileError) {
+  if (profileError && profileError.code === 'PGRST116') { // Not found
+    // Insert user profile if not found
+    const { error: insertError } = await supabase.from('users').insert([
+      {
+        id: data.user.id,
+        email: data.user.email,
+        first_name: data.user.user_metadata?.first_name || '',
+        last_name: data.user.user_metadata?.last_name || '',
+        is_seller: data.user.user_metadata?.is_seller || false,
+      },
+    ]);
+    if (insertError) throw insertError;
+    // Fetch the newly inserted user
+    const { data: newUser, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (fetchError) throw fetchError;
+    userData = newUser;
+  } else if (profileError) {
     throw profileError;
   }
 
@@ -112,14 +122,13 @@ export const logout = async (): Promise<void> => {
 };
 
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.user) return null;
 
   const { data: userData, error } = await supabase
     .from('users')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single();
 
   if (error) throw error;

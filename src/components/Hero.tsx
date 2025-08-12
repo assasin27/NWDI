@@ -14,30 +14,19 @@ const Hero: React.FC = () => {
         <img 
           src={heroFarm} 
           alt="Nareshwadi Farm Background" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain sm:object-cover object-center"
         />
       </div>
 
       {/* Enhanced Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
+      <div className="absolute inset-0 opacity-5 z-0">
         <div className="absolute inset-0" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
       </div>
 
-      {/* Floating Product Images */}
-      <div className="absolute top-20 left-10 w-32 h-32 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse">
-        <img src={fruitsImg} alt="Fresh Fruits" className="w-full h-full object-cover" />
-      </div>
-      <div className="absolute bottom-20 right-10 w-40 h-40 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse delay-1000">
-        <img src={vegetablesImg} alt="Organic Vegetables" className="w-full h-full object-cover" />
-      </div>
-      <div className="absolute top-1/2 left-1/4 w-28 h-28 rounded-full overflow-hidden shadow-2xl opacity-80 animate-pulse delay-500">
-        <img src={farmerPortrait} alt="Nareshwadi Farmer" className="w-full h-full object-cover" />
-      </div>
-
       {/* Main Content Container */}
-      <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+      <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 z-20">
         <div className="text-center space-y-8">
           
           {/* Badge Section */}
@@ -85,7 +74,6 @@ const Hero: React.FC = () => {
                 }
               }}
             >
-              <ShoppingCart className="mr-3 h-6 w-6" />
               Shop Now
               <ArrowRight className="ml-3 h-6 w-6" />
             </Button>

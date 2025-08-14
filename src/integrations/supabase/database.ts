@@ -1,10 +1,7 @@
 import { supabase } from './supabaseClient';
-import type { Database } from './types';
 
-type Tables = Database['public']['Tables'];
-type Products = Tables['products']['Row'];
-type InsertProduct = Tables['products']['Insert'];
-type UpdateProduct = Tables['products']['Update'];
+// Note: Generated Supabase types currently do not include the 'products' table.
+// Avoid referencing it at the type level to prevent TS errors.
 
 // Products
 export const getProducts = async (categoryId?: string) => {

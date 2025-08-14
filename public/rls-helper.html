@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RLS Policy Helper</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .card { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      padding: 10px 15px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer;
+      margin: 5px 0;
+    }
+    button:hover { background: #45a049; }
+    #result { 
+      margin-top: 15px; 
+      padding: 10px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+    .error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+    .info { background: #d9edf7; color: #31708f; border: 1px solid #bce8f1; }
+    .sql { 
+      background: #2d2d2d; 
+      color: #f8f8f2; 
+      padding: 15px; 
+      border-radius: 4px; 
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Supabase RLS Policy Helper</h1>
+  
+  <div class="card">
+    <h2>Current Issue</h2>
+    <p>You're seeing this error when trying to insert into the <code>products</code> table:</p>
+    <div class="error">
+      <strong>Error:</strong> new row violates row-level security policy for table "products"
+      <br><strong>Code:</strong> 42501
+    </div>
+    <p>This means you need to set up proper Row-Level Security (RLS) policies for the products table.</p>
+  </div>
+  
+  <div class="card">
+    <h2>Quick Fix</h2>
+    <p>Run this SQL in your Supabase SQL Editor to enable basic RLS policies:</p>
+    
+    <div class="sql">
+-- Enable RLS on products table
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Allow all users to read products
+CREATE POLICY "Enable read access for all users" 
+ON products FOR SELECT 
+TO authenticated, anon
+USING (true);
+
+-- Allow authenticated users to insert their own products
+CREATE POLICY "Enable insert for authenticated users only" 
+ON products FOR INSERT 
+TO authenticated 
+WITH CHECK (auth.uid() = seller_id);
+
+-- Allow users to update their own products
+CREATE POLICY "Enable update for users based on seller_id" 
+ON products FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = seller_id);
+
+-- Allow users to delete their own products
+CREATE POLICY "Enable delete for users based on seller_id" 
+ON products FOR DELETE 
+TO authenticated 
+USING (auth.uid() = seller_id);
+    </div>
+    
+    <p><strong>Note:</strong> This assumes your products table has a <code>seller_id</code> column that matches the authenticated user's ID.</p>
+  </div>
+  
+  <div class="card">
+    <h2>Alternative: Disable RLS (Not Recommended for Production)</h2>
+    <p>For development only, you can disable RLS on the products table:</p>
+    <div class="sql">
+-- Disable RLS on products table (NOT RECOMMENDED for production)
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+    </div>
+    <button id="disableRls">Run This SQL in Supabase</button>
+    <div id="disableRlsResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Check Current RLS Policies</h2>
+    <p>View current RLS policies on all tables:</p>
+    <div class="sql">
+SELECT n.nspname as schema,
+       c.relname as table,
+       c.relrowsecurity as rls_enabled,
+       c.relforcerowsecurity as rls_forced,
+       c.relhaspolicy as has_policies
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'  -- regular tables
+  AND n.nspname = 'public';
+    </div>
+    <button id="checkRls">Run This Query in Supabase</button>
+    <div id="checkRlsResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Next Steps</h2>
+    <ol>
+      <li>Go to your <a href="https://app.supabase.com/project/lzjhjecktllltkizgwnr/editor/sql" target="_blank">Supabase SQL Editor</a></li>
+      <li>Copy and paste the SQL from the "Quick Fix" section above</li>
+      <li>Run the SQL (make sure to be connected as a database superuser)</li>
+      <li>Try adding a product again</li>
+    </ol>
+    
+    <p>If you still have issues, you may need to:</p>
+    <ul>
+      <li>Ensure your products table has a <code>seller_id</code> column of type <code>UUID</code> that references <code>auth.users(id)</code></li>
+      <li>Make sure you're properly authenticated when making the request</li>
+      <li>Check the browser console for any other errors</li>
+    </ul>
+  </div>
+  
+  <script>
+    // Supabase configuration
+    const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
+    
+    // Initialize Supabase
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    // Function to show result
+    function showResult(elementId, message, isError = false) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = isError ? 'error' : 'success';
+      el.style.display = 'block';
+    }
+    
+    // Check RLS status
+    document.getElementById('checkRls')?.addEventListener('click', async () => {
+      try {
+        const { data, error } = await supabase
+          .rpc('get_rls_status');
+          
+        if (error) throw error;
+        
+        showResult('checkRlsResult', JSON.stringify(data, null, 2));
+      } catch (error) {
+        showResult('checkRlsResult', `Error: ${error.message}`, true);
+      }
+    });
+  </script>
+</body>
+</html>

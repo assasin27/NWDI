@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Product Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    input, button { 
+      display: block; 
+      width: 100%; 
+      padding: 10px; 
+      margin: 10px 0; 
+      box-sizing: border-box;
+    }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      cursor: pointer; 
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { 
+      background: #cccccc; 
+      cursor: not-allowed; 
+    }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <h1>Simple Product Test</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <label for="supabaseUrl">Supabase URL:</label>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" />
+    
+    <label for="supabaseKey">Anon/Public Key:</label>
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+    
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card" id="authSection" style="display: none;">
+    <h2>2. Sign In</h2>
+    <label for="email">Email:</label>
+    <input type="email" id="email" placeholder="your@email.com" />
+    
+    <label for="password">Password:</label>
+    <input type="password" id="password" placeholder="Create a password (min 6 chars)" />
+    
+    <button id="signIn">Sign In / Sign Up</button>
+    <button id="signOut" disabled>Sign Out</button>
+  </div>
+  
+  <div class="card" id="productSection" style="display: none;">
+    <h2>3. Test Product</h2>
+    <button id="testProduct">Create Test Product</button>
+    <div id="productResult"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const authSection = document.getElementById('authSection');
+    const productSection = document.getElementById('productSection');
+    const signInBtn = document.getElementById('signIn');
+    const signOutBtn = document.getElementById('signOut');
+    const testProductBtn = document.getElementById('testProduct');
+    const resultDiv = document.getElementById('result');
+    const productResult = document.getElementById('productResult');
+    
+    let supabase;
+    
+    // Load saved config
+    function loadConfig() {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    }
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        authSection.style.display = 'block';
+        checkAuth();
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+      }
+    });
+    
+    // Check auth status
+    async function checkAuth() {
+      if (!supabase) return;
+      
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        
+        if (session) {
+          showResult(`Signed in as: ${session.user.email}`, false);
+          signInBtn.disabled = true;
+          signOutBtn.disabled = false;
+          productSection.style.display = 'block';
+        } else {
+          signInBtn.disabled = false;
+          signOutBtn.disabled = true;
+          productSection.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      }
+    }
+    
+    // Sign in/up with email and password
+    signInBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        showResult('Please enter both email and password', true);
+        return;
+      }
+      
+      try {
+        showResult('Signing in...', false);
+        
+        // First try to sign in
+        const { data: signInData, error: signInError } = 
+          await supabase.auth.signInWithPassword({ email, password });
+        
+        // If sign in fails, try to sign up
+        if (signInError) {
+          if (signInError.message.includes('Invalid login credentials')) {
+            showResult('Creating new account...', false);
+            const { data: signUpData, error: signUpError } = 
+              await supabase.auth.signUp({ email, password });
+              
+            if (signUpError) throw signUpError;
+            showResult('Account created! Check your email to confirm.', false);
+          } else {
+            throw signInError;
+          }
+        } else {
+          showResult('Successfully signed in!', false);
+          checkAuth();
+        }
+      } catch (error) {
+        showResult(`Error: ${error.message}`, true);
+        console.error('Auth error:', error);
+      }
+    });
+    
+    // Sign out
+    signOutBtn.addEventListener('click', async () => {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        showResult('Signed out successfully', false);
+        checkAuth();
+      } catch (error) {
+        showResult(`Error signing out: ${error.message}`, true);
+      }
+    });
+    
+    // Create test product
+    testProductBtn.addEventListener('click', async () => {
+      testProductBtn.disabled = true;
+      testProductBtn.textContent = 'Creating product...';
+      
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
+        
+        // Create or get seller profile
+        let { data: sellerProfile } = await supabase
+          .from('seller_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (!sellerProfile) {
+          const { data: newProfile, error: profileError } = await supabase
+            .from('seller_profiles')
+            .insert([{ 
+              user_id: user.id,
+              business_name: 'Test Seller ' + Math.random().toString(36).substring(2, 8)
+            }])
+            .select()
+            .single();
+            
+          if (profileError) throw profileError;
+          sellerProfile = newProfile;
+        }
+        
+        // Create test product
+        const testProduct = {
+          name: 'Test Product ' + new Date().toLocaleTimeString(),
+          description: 'This is a test product',
+          price: 999, // $9.99 in cents
+          stock_quantity: 10,
+          seller_id: sellerProfile.id,
+          image_url: 'https://source.unsplash.com/400x300/?product,test',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .insert([testProduct])
+          .select()
+          .single();
+          
+        if (productError) throw productError;
+        
+        productResult.innerHTML = `
+          <div class="success">
+            <h3>✅ Product Created Successfully!</h3>
+            <p><strong>ID:</strong> ${product.id}</p>
+            <p><strong>Name:</strong> ${product.name}</p>
+            <p><strong>Price:</strong> $${(product.price / 100).toFixed(2)}</p>
+          </div>
+        `;
+        
+      } catch (error) {
+        productResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Creating Product</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+        console.error('Product creation error:', error);
+      } finally {
+        testProductBtn.disabled = false;
+        testProductBtn.textContent = 'Create Test Product';
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+    }
+    
+    // Initialize
+    loadConfig();
+  </script>
+</body>
+</html>

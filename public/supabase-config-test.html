@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Config Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    input, button { 
+      display: block; 
+      width: 100%; 
+      padding: 10px; 
+      margin: 10px 0; 
+      box-sizing: border-box;
+    }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: bold;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    code { background: #f8f9fa; padding: 2px 5px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Supabase Configuration Test</h1>
+  
+  <div class="card">
+    <h2>1. Enter Your Supabase Credentials</h2>
+    <p>Get these from your Supabase project settings under Project Settings → API</p>
+    
+    <label for="supabaseUrl">Supabase URL:</label>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" />
+    
+    <label for="supabaseKey">Anon/Public Key:</label>
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+    
+    <button id="testConnection">Test Connection</button>
+  </div>
+  
+  <div id="connectionResult" class="card" style="display: none;">
+    <h2>2. Test Authentication</h2>
+    <div id="authResult">
+      <p>Connection successful! Now testing authentication...</p>
+    </div>
+    <button id="testAuth" disabled>Test Authentication</button>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const testConnectionBtn = document.getElementById('testConnection');
+    const testAuthBtn = document.getElementById('testAuth');
+    const connectionResult = document.getElementById('connectionResult');
+    const authResult = document.getElementById('authResult');
+    const resultDiv = document.getElementById('result');
+    
+    // Initialize Supabase client when credentials are provided
+    let supabase;
+    
+    // Test Supabase connection
+    testConnectionBtn.addEventListener('click', async () => {
+      const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
+      const supabaseKey = document.getElementById('supabaseKey').value.trim();
+      
+      if (!supabaseUrl || !supabaseKey) {
+        showResult('Please enter both Supabase URL and Anon Key', true);
+        return;
+      }
+      
+      try {
+        showResult('Testing connection to Supabase...', false);
+        
+        // Initialize Supabase with provided credentials
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Test a simple query to check connection
+        const { data, error } = await supabase.from('products').select('*').limit(1);
+        
+        if (error) throw error;
+        
+        // If we get here, connection is good
+        showResult('✅ Successfully connected to Supabase!', false);
+        connectionResult.style.display = 'block';
+        testAuthBtn.disabled = false;
+        
+        // Store credentials in localStorage for convenience
+        localStorage.setItem('supabaseUrl', supabaseUrl);
+        localStorage.setItem('supabaseKey', supabaseKey);
+        
+      } catch (error) {
+        showResult(`❌ Connection failed: ${error.message}`, true);
+        console.error('Connection error:', error);
+      }
+    });
+    
+    // Test Authentication
+    testAuthBtn.addEventListener('click', async () => {
+      try {
+        showResult('Testing authentication...', false);
+        
+        // Try to get current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+        
+        if (session) {
+          showResult(`✅ Authenticated as: ${session.user.email}`, false);
+          authResult.innerHTML = `
+            <h3>Authentication Successful!</h3>
+            <p><strong>User ID:</strong> ${session.user.id}</p>
+            <p><strong>Email:</strong> ${session.user.email}</p>
+            <p><strong>Last Sign In:</strong> ${new Date(session.user.last_sign_in_at).toLocaleString()}</p>
+            <p>You can now use these credentials in your application.</p>
+          `;
+        } else {
+          showResult('ℹ️ Not authenticated. Please sign in using your app.', false);
+          authResult.innerHTML = `
+            <h3>Not Authenticated</h3>
+            <p>You need to sign in through your application first.</p>
+            <p>Check your browser's console for more details.</p>
+          `;
+        }
+        
+      } catch (error) {
+        showResult(`❌ Authentication test failed: ${error.message}`, true);
+        console.error('Auth error:', error);
+      }
+    });
+    
+    // Load saved credentials if they exist
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+  </script>
+</body>
+</html>

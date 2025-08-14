@@ -10,10 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { 
   ArrowLeft, 
   Plus, 
-  Upload, 
   Package,
   Search
 } from 'lucide-react';
+import { supabase } from '../../integrations/supabase/supabaseClient';
 
 interface ProductForm {
   name: string;
@@ -74,34 +74,76 @@ const AddProduct: React.FC = () => {
         return;
       }
 
-      // Simulate API call to add product
-      const newProduct = {
-        id: Date.now().toString(),
-        ...form,
-        price: parseFloat(form.price),
-        createdAt: new Date().toISOString()
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage({ type: 'error', text: 'You must be logged in to add products.' });
+        return;
+      }
+
+      // Get the seller profile for the current user
+      const { data: sellerProfile, error: sellerError } = await supabase
+        .from('seller_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (sellerError || !sellerProfile) {
+        console.error('Error getting seller profile:', sellerError);
+        setMessage({ 
+          type: 'error', 
+          text: 'Seller profile not found. Please complete your seller profile first.' 
+        });
+        return;
+      }
+
+      // Map form to Supabase payload with correct seller_id from seller_profiles
+      const productData = {
+        name: form.name,
+        description: form.description,
+        category_id: form.category, // Assuming category is stored as UUID
+        price: parseFloat(form.price) * 100, // Convert to cents/pennies for storage
+        image_url: form.image,
+        stock_quantity: form.inStock ? 10 : 0, // Default to 10 in stock
+        seller_id: sellerProfile.id, // Use the seller_profile.id, not user.id
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      console.log('Adding product:', newProduct);
-      // In a real app, you'd save to Supabase here
-      // const { data, error } = await supabase
-      //   .from('products')
-      //   .insert([newProduct]);
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('products')
+        .insert([productData])
+        .select() // Important: Return the inserted record to confirm it was created
+        .select();
 
-      setMessage({ type: 'success', text: 'Product added successfully! It will now appear in the customer portal.' });
+      if (error) throw error;
+
+      setMessage({ 
+        type: 'success', 
+        text: 'Product added successfully! It will now appear in the customer portal.' 
+      });
+      
+      // Reset form
       setForm({
         name: '',
         description: '',
         price: '',
         category: '',
         image: '',
-        inStock: true
+        inStock: true,
       });
+      
+      // Navigate back to dashboard after a short delay
       setTimeout(() => {
         navigate('/farmer/dashboard');
       }, 2000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
+      console.error('Error adding product:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Failed to add product. Please try again.' 
+      });
     } finally {
       setLoading(false);
     }
@@ -157,12 +199,12 @@ const AddProduct: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="category" className="text-orange-700">Category *</Label>
                 <Select value={form.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger id="category" name="category" autoComplete="off">
+                  <SelectTrigger id="category">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category} id={`cat-${category}`} name="category">
+                      <SelectItem key={category} value={category}>
                         {category}
                       </SelectItem>
                     ))}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Product Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      margin: 10px 0; 
+      cursor: pointer; 
+      width: 100%;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    pre { 
+      background: #f8f9fa; 
+      padding: 10px; 
+      border-radius: 4px; 
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Product Test</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <p>Enter your Supabase URL and Anon Key from Project Settings → API</p>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card" id="testSection" style="display: none;">
+    <h2>2. Test Products</h2>
+    <button id="listProducts">List All Products</button>
+    <button id="testInsert">Test Insert Product</button>
+    <div id="testResult"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const testSection = document.getElementById('testSection');
+    const listProductsBtn = document.getElementById('listProducts');
+    const testInsertBtn = document.getElementById('testInsert');
+    const resultDiv = document.getElementById('result');
+    const testResult = document.getElementById('testResult');
+    
+    let supabase;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    });
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+        testSection.style.display = 'block';
+      }
+    });
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // List all products
+    listProductsBtn.addEventListener('click', async () => {
+      listProductsBtn.disabled = true;
+      listProductsBtn.textContent = 'Loading...';
+      
+      try {
+        const { data: products, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (products && products.length > 0) {
+          testResult.innerHTML = `
+            <h3>Found ${products.length} Products</h3>
+            <pre>${JSON.stringify(products, null, 2)}</pre>
+            
+            <h4>Product Fields:</h4>
+            ${Object.keys(products[0]).map(key => `<div>• ${key} (${typeof products[0][key]})</div>`).join('')}
+          `;
+        } else {
+          testResult.innerHTML = '<p>No products found. Try creating one using the Test Insert button.</p>';
+        }
+      } catch (error) {
+        testResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Loading Products</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        console.error('Products list error:', error);
+      } finally {
+        listProductsBtn.disabled = false;
+        listProductsBtn.textContent = 'List All Products';
+      }
+    });
+    
+    // Test insert with minimal required fields
+    testInsertBtn.addEventListener('click', async () => {
+      testInsertBtn.disabled = true;
+      testInsertBtn.textContent = 'Testing Insert...';
+      
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
+        
+        // Minimal product data
+        const testProduct = {
+          name: 'Test Product ' + new Date().toLocaleTimeString(),
+          price: 999, // in cents
+          seller_id: user.id, // Using user ID as seller ID
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: product, error } = await supabase
+          .from('products')
+          .insert([testProduct])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        testResult.innerHTML = `
+          <div class="success">
+            <h3>✅ Product Created Successfully!</h3>
+            <p>Here's the created product:</p>
+            <pre>${JSON.stringify(product, null, 2)}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        testResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Creating Product</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+            
+            <h4>Error Details:</h4>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+        console.error('Insert error:', error);
+      } finally {
+        testInsertBtn.disabled = false;
+        testInsertBtn.textContent = 'Test Insert Product';
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+  </script>
+</body>
+</html>

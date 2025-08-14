@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Direct Product Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      margin: 10px 0; 
+      cursor: pointer; 
+      width: 100%;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Direct Product Test</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <p>Enter your Supabase URL and Anon Key from Project Settings → API</p>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card" id="productSection" style="display: none;">
+    <h2>2. Test Product Creation</h2>
+    <p>This will create a test product with your user as the seller.</p>
+    <button id="testProduct">Create Test Product</button>
+    <div id="productResult"></div>
+  </div>
+  
+  <div class="card" id="productsSection" style="display: none;">
+    <h2>Your Products</h2>
+    <button id="listProducts">List All Products</button>
+    <div id="productsList"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const productSection = document.getElementById('productSection');
+    const productsSection = document.getElementById('productsSection');
+    const testProductBtn = document.getElementById('testProduct');
+    const listProductsBtn = document.getElementById('listProducts');
+    const resultDiv = document.getElementById('result');
+    const productResult = document.getElementById('productResult');
+    const productsList = document.getElementById('productsList');
+    
+    let supabase;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    });
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+      }
+    });
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        productSection.style.display = 'block';
+        productsSection.style.display = 'block';
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // Create test product
+    testProductBtn.addEventListener('click', async () => {
+      testProductBtn.disabled = true;
+      testProductBtn.textContent = 'Creating product...';
+      productResult.innerHTML = '';
+      
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
+        
+        // Get or create seller profile (using user_id only)
+        let sellerId = user.id;
+        
+        // Create test product
+        const testProduct = {
+          name: 'Test Product ' + new Date().toLocaleTimeString(),
+          description: 'This is a test product',
+          price: 999, // $9.99 in cents
+          stock_quantity: 10,
+          seller_id: sellerId, // Using user_id as seller_id for testing
+          image_url: 'https://source.unsplash.com/400x300/?product,test',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .insert([testProduct])
+          .select()
+          .single();
+          
+        if (productError) throw productError;
+        
+        productResult.innerHTML = `
+          <div class="success">
+            <h3>✅ Product Created Successfully!</h3>
+            <pre>${JSON.stringify(product, null, 2)}</pre>
+          </div>
+        `;
+        
+        // Refresh products list
+        listProducts();
+        
+      } catch (error) {
+        productResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Creating Product</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        console.error('Product creation error:', error);
+      } finally {
+        testProductBtn.disabled = false;
+        testProductBtn.textContent = 'Create Test Product';
+      }
+    });
+    
+    // List all products
+    listProductsBtn.addEventListener('click', listProducts);
+    
+    async function listProducts() {
+      listProductsBtn.disabled = true;
+      listProductsBtn.textContent = 'Loading...';
+      productsList.innerHTML = '<p>Loading products...</p>';
+      
+      try {
+        const { data: products, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (products && products.length > 0) {
+          productsList.innerHTML = `
+            <h3>Found ${products.length} Products</h3>
+            <pre>${JSON.stringify(products, null, 2)}</pre>
+          `;
+        } else {
+          productsList.innerHTML = '<p>No products found.</p>';
+        }
+      } catch (error) {
+        productsList.innerHTML = `
+          <div class="error">
+            <h3>Error Loading Products</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        console.error('Products list error:', error);
+      } finally {
+        listProductsBtn.disabled = false;
+        listProductsBtn.textContent = 'List All Products';
+      }
+    }
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+  </script>
+</body>
+</html>

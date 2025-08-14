@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Inspect Tables</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      margin: 10px 0; 
+      cursor: pointer; 
+      width: 100%;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    pre { 
+      background: #f8f9fa; 
+      padding: 10px; 
+      border-radius: 4px; 
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Inspect Database Tables</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <p>Enter your Supabase URL and Anon Key from Project Settings → API</p>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card" id="testSection" style="display: none;">
+    <h2>2. Inspect Tables</h2>
+    <button id="inspectSellerProfiles">Inspect seller_profiles Table</button>
+    <button id="inspectProducts">Inspect products Table</button>
+    <div id="inspectionResult"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const testSection = document.getElementById('testSection');
+    const resultDiv = document.getElementById('result');
+    const inspectionResult = document.getElementById('inspectionResult');
+    
+    let supabase;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    });
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+        testSection.style.display = 'block';
+      }
+    });
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // Inspect seller_profiles table
+    document.getElementById('inspectSellerProfiles').addEventListener('click', async () => {
+      const btn = document.getElementById('inspectSellerProfiles');
+      btn.disabled = true;
+      btn.textContent = 'Inspecting...';
+      
+      try {
+        // First try to get table info
+        const { data: columns, error: columnsError } = await supabase
+          .from('information_schema.columns')
+          .select('column_name, data_type, is_nullable')
+          .eq('table_name', 'seller_profiles');
+          
+        if (columnsError && columnsError.code === '42P01') {
+          inspectionResult.innerHTML = `
+            <div class="error">
+              <h3>Table not found: seller_profiles</h3>
+              <p>The seller_profiles table does not exist in your database.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        if (columnsError) throw columnsError;
+        
+        // Try to get sample data
+        const { data: sampleData, error: dataError } = await supabase
+          .from('seller_profiles')
+          .select('*')
+          .limit(5);
+          
+        inspectionResult.innerHTML = `
+          <h3>seller_profiles Table Structure</h3>
+          <pre>${JSON.stringify(columns, null, 2)}</pre>
+          
+          <h3>Sample Data (first 5 rows)</h3>
+          ${dataError ? 
+            `<div class="error">
+              <p>Error fetching sample data: ${dataError.message}</p>
+              <pre>${JSON.stringify(dataError, null, 2)}</pre>
+            </div>` : 
+            `<pre>${JSON.stringify(sampleData, null, 2)}</pre>`
+          }
+        `;
+        
+      } catch (error) {
+        inspectionResult.innerHTML = `
+          <div class="error">
+            <h3>Error inspecting seller_profiles table</h3>
+            <p>${error.message}</p>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Inspect seller_profiles Table';
+      }
+    });
+    
+    // Inspect products table
+    document.getElementById('inspectProducts').addEventListener('click', async () => {
+      const btn = document.getElementById('inspectProducts');
+      btn.disabled = true;
+      btn.textContent = 'Inspecting...';
+      
+      try {
+        // First try to get table info
+        const { data: columns, error: columnsError } = await supabase
+          .from('information_schema.columns')
+          .select('column_name, data_type, is_nullable')
+          .eq('table_name', 'products');
+          
+        if (columnsError && columnsError.code === '42P01') {
+          inspectionResult.innerHTML = `
+            <div class="error">
+              <h3>Table not found: products</h3>
+              <p>The products table does not exist in your database.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        if (columnsError) throw columnsError;
+        
+        // Try to get sample data
+        const { data: sampleData, error: dataError } = await supabase
+          .from('products')
+          .select('*')
+          .limit(5);
+          
+        inspectionResult.innerHTML = `
+          <h3>products Table Structure</h3>
+          <pre>${JSON.stringify(columns, null, 2)}</pre>
+          
+          <h3>Sample Data (first 5 rows)</h3>
+          ${dataError ? 
+            `<div class="error">
+              <p>Error fetching sample data: ${dataError.message}</p>
+              <pre>${JSON.stringify(dataError, null, 2)}</pre>
+            </div>` : 
+            `<pre>${JSON.stringify(sampleData, null, 2)}</pre>`
+          }
+        `;
+        
+      } catch (error) {
+        inspectionResult.innerHTML = `
+          <div class="error">
+            <h3>Error inspecting products table</h3>
+            <p>${error.message}</p>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Inspect products Table';
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Seller Flow Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      margin: 10px 0; 
+      cursor: pointer; 
+      width: 100%;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    pre { 
+      background: #f8f9fa; 
+      padding: 10px; 
+      border-radius: 4px; 
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Seller Flow Test</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <p>Enter your Supabase URL and Anon Key from Project Settings → API</p>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card" id="testSection" style="display: none;">
+    <h2>2. Test Seller Flow</h2>
+    <div id="userInfo"></div>
+    <button id="checkSellerProfile">Check Seller Profile</button>
+    <button id="createSellerProfile">Create Seller Profile</button>
+    <button id="testProduct" disabled>Test Create Product</button>
+    <div id="testResult"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const testSection = document.getElementById('testSection');
+    const checkSellerBtn = document.getElementById('checkSellerProfile');
+    const createSellerBtn = document.getElementById('createSellerProfile');
+    const testProductBtn = document.getElementById('testProduct');
+    const resultDiv = document.getElementById('result');
+    const testResult = document.getElementById('testResult');
+    const userInfoDiv = document.getElementById('userInfo');
+    
+    let supabase;
+    let currentUser = null;
+    let sellerProfile = null;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    });
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+        testSection.style.display = 'block';
+        checkAuth();
+      }
+    });
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // Check authentication status
+    async function checkAuth() {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user) {
+          currentUser = user;
+          updateUserInfo();
+          checkSellerProfile();
+        } else {
+          showResult('Please sign in first', true);
+        }
+      } catch (error) {
+        showResult(`Auth error: ${error.message}`, true);
+      }
+    }
+    
+    // Update user info display
+    function updateUserInfo() {
+      if (!currentUser) return;
+      
+      userInfoDiv.innerHTML = `
+        <h3>Current User</h3>
+        <p>Email: ${currentUser.email}</p>
+        <p>User ID: ${currentUser.id}</p>
+        ${sellerProfile ? 
+          `<div class="success">
+            <h4>Seller Profile Found</h4>
+            <pre>${JSON.stringify(sellerProfile, null, 2)}</pre>
+          </div>` : 
+          '<p class="error">No seller profile found. Create one below.</p>'
+        }
+      `;
+    }
+    
+    // Check if user has a seller profile
+    async function checkSellerProfile() {
+      if (!currentUser) return;
+      
+      checkSellerBtn.disabled = true;
+      checkSellerBtn.textContent = 'Checking...';
+      
+      try {
+        const { data, error } = await supabase
+          .from('seller_profiles')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+        
+        sellerProfile = data || null;
+        testProductBtn.disabled = !sellerProfile;
+        updateUserInfo();
+        
+        if (!sellerProfile) {
+          showResult('No seller profile found. Please create one.', false);
+        } else {
+          showResult('Seller profile found! You can now create products.', false);
+        }
+      } catch (error) {
+        showResult(`Error checking seller profile: ${error.message}`, true);
+      } finally {
+        checkSellerBtn.disabled = false;
+        checkSellerBtn.textContent = 'Check Seller Profile';
+      }
+    }
+    
+    // Create a seller profile
+    createSellerBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+      
+      createSellerBtn.disabled = true;
+      createSellerBtn.textContent = 'Creating...';
+      
+      try {
+        const newProfile = {
+          user_id: currentUser.id,
+          business_name: `Test Business ${Math.random().toString(36).substring(2, 8)}`,
+          created_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabase
+          .from('seller_profiles')
+          .insert([newProfile])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        sellerProfile = data;
+        testProductBtn.disabled = false;
+        updateUserInfo();
+        showResult('Seller profile created successfully!', false);
+      } catch (error) {
+        showResult(`Error creating seller profile: ${error.message}`, true);
+      } finally {
+        createSellerBtn.disabled = false;
+        createSellerBtn.textContent = 'Create Seller Profile';
+      }
+    });
+    
+    // Test creating a product
+    testProductBtn.addEventListener('click', async () => {
+      if (!currentUser || !sellerProfile) return;
+      
+      testProductBtn.disabled = true;
+      testProductBtn.textContent = 'Creating Product...';
+      
+      try {
+        const testProduct = {
+          name: `Test Product ${new Date().toLocaleTimeString()}`,
+          price: 999, // in cents
+          seller_id: sellerProfile.id, // Using seller profile ID
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: product, error } = await supabase
+          .from('products')
+          .insert([testProduct])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        testResult.innerHTML = `
+          <div class="success">
+            <h3>✅ Product Created Successfully!</h3>
+            <pre>${JSON.stringify(product, null, 2)}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        testResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Creating Product</h3>
+            <p>${error.message}</p>
+            <pre>${JSON.stringify(error, null, 2)}</pre>
+          </div>
+        `;
+        console.error('Product creation error:', error);
+      } finally {
+        testProductBtn.disabled = false;
+        testProductBtn.textContent = 'Test Create Product';
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+    
+    // Set up button click handlers
+    checkSellerBtn.addEventListener('click', checkSellerProfile);
+  </script>
+</body>
+</html>

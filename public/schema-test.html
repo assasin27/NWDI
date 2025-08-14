@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Schema Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    button { 
+      background: #4CAF50; 
+      color: white; 
+      border: none; 
+      padding: 12px; 
+      margin: 10px 0; 
+      cursor: pointer; 
+      width: 100%;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    #result { 
+      margin: 20px 0; 
+      padding: 15px; 
+      border-radius: 4px; 
+      white-space: pre-wrap;
+      min-height: 20px;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    pre { 
+      background: #f8f9fa; 
+      padding: 10px; 
+      border-radius: 4px; 
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Database Schema Test</h1>
+  
+  <div class="card">
+    <h2>1. Configure Supabase</h2>
+    <p>Enter your Supabase URL and Anon Key from Project Settings → API</p>
+    <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxxxxxxx.supabase.co" style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width: 100%; padding: 8px; margin: 5px 0 15px 0;" />
+    <button id="saveConfig">Save Configuration</button>
+  </div>
+  
+  <div class="card hidden" id="testSection">
+    <h2>2. Test Database</h2>
+    <button id="inspectSchema">Inspect Database Schema</button>
+    <button id="testInsert" class="hidden">Test Insert Product</button>
+    <div id="testResult"></div>
+  </div>
+  
+  <div id="result"></div>
+
+  <script>
+    // DOM Elements
+    const testSection = document.getElementById('testSection');
+    const inspectBtn = document.getElementById('inspectSchema');
+    const testInsertBtn = document.getElementById('testInsert');
+    const resultDiv = document.getElementById('result');
+    const testResult = document.getElementById('testResult');
+    
+    let supabase;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('supabaseUrl');
+      const savedKey = localStorage.getItem('supabaseKey');
+      
+      if (savedUrl && savedKey) {
+        document.getElementById('supabaseUrl').value = savedUrl;
+        document.getElementById('supabaseKey').value = savedKey;
+        initSupabase(savedUrl, savedKey);
+      }
+    });
+    
+    // Save configuration
+    document.getElementById('saveConfig').addEventListener('click', () => {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        showResult('Please enter both URL and Key', true);
+        return;
+      }
+      
+      localStorage.setItem('supabaseUrl', url);
+      localStorage.setItem('supabaseKey', key);
+      
+      if (initSupabase(url, key)) {
+        showResult('Configuration saved!', false);
+        testSection.classList.remove('hidden');
+      }
+    });
+    
+    // Initialize Supabase
+    function initSupabase(url, key) {
+      try {
+        supabase = window.supabase.createClient(url, key);
+        return true;
+      } catch (error) {
+        showResult(`Error initializing Supabase: ${error.message}`, true);
+        return false;
+      }
+    }
+    
+    // Inspect database schema
+    inspectBtn.addEventListener('click', async () => {
+      inspectBtn.disabled = true;
+      inspectBtn.textContent = 'Inspecting...';
+      testResult.innerHTML = '<p>Inspecting database schema...</p>';
+      
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        
+        let result = '<h3>Database Inspection Results</h3>';
+        
+        // 1. Check if products table exists and get its columns
+        try {
+          const { data: columns, error } = await supabase
+            .from('information_schema.columns')
+            .select('column_name, data_type, is_nullable')
+            .eq('table_name', 'products');
+            
+          if (error) throw error;
+          
+          if (columns && columns.length > 0) {
+            result += `
+              <h4>Products Table Columns (${columns.length}):</h4>
+              <pre>${JSON.stringify(columns, null, 2)}</pre>
+            `;
+            
+            // Enable test insert button
+            testInsertBtn.classList.remove('hidden');
+          } else {
+            result += '<p>No columns found in products table.</p>';
+          }
+        } catch (error) {
+          result += `<p>Error reading products table: ${error.message}</p>`;
+        }
+        
+        // 2. Check for seller_profiles table
+        try {
+          const { data: sellerProfiles, error } = await supabase
+            .from('seller_profiles')
+            .select('*')
+            .limit(1);
+            
+          if (error && !error.message.includes('relation "seller_profiles" does not exist')) {
+            throw error;
+          }
+          
+          result += `
+            <h4>Seller Profiles:</h4>
+            <p>${error ? 'No seller_profiles table found.' : 'seller_profiles table exists.'}</p>
+          `;
+          
+        } catch (error) {
+          result += `<p>Error checking seller_profiles: ${error.message}</p>`;
+        }
+        
+        // 3. Show current user info
+        result += `
+          <h4>Current User:</h4>
+          <pre>${JSON.stringify(user, null, 2)}</pre>
+        `;
+        
+        testResult.innerHTML = result;
+        
+      } catch (error) {
+        testResult.innerHTML = `
+          <div class="error">
+            <h3>❌ Error Inspecting Database</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        console.error('Inspection error:', error);
+      } finally {
+        inspectBtn.disabled = false;
+        inspectBtn.textContent = 'Inspect Database Schema';
+      }
+    });
+    
+    // Test insert with minimal required fields
+    testInsertBtn.addEventListener('click', async () => {
+      testInsertBtn.disabled = true;
+      testInsertBtn.textContent = 'Testing Insert...';
+      
+      try {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw new Error('Not authenticated');
+        
+        // Minimal product data based on schema
+        const testProduct = {
+          name: 'Test Product ' + new Date().toLocaleTimeString(),
+          price: 999, // in cents
+          seller_id: user.id, // Using user ID as seller ID
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: product, error } = await supabase
+          .from('products')
+          .insert([testProduct])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        testResult.innerHTML += `
+          <div class="success">
+            <h3>✅ Product Created Successfully!</h3>
+            <pre>${JSON.stringify(product, null, 2)}</pre>
+          </div>
+        `;
+        
+      } catch (error) {
+        testResult.innerHTML += `
+          <div class="error">
+            <h3>❌ Error Creating Product</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        console.error('Insert error:', error);
+      } finally {
+        testInsertBtn.disabled = false;
+        testInsertBtn.textContent = 'Test Insert Product';
+      }
+    });
+    
+    // Helper function to show results
+    function showResult(message, isError) {
+      resultDiv.textContent = message;
+      resultDiv.className = isError ? 'error' : 'success';
+      console.log(isError ? 'Error:' : 'Success:', message);
+    }
+  </script>
+</body>
+</html>

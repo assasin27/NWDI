@@ -1,43 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Badge } from '../../components/ui/badge';
-import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
+import { Toaster, toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { 
+import {
   IndianRupee,
-  Package, 
-  TrendingUp,
-  Users,
+  Package,
   ShoppingCart,
   AlertTriangle,
-  CheckCircle, 
   Clock,
-  Truck,
   BarChart3,
   Settings,
   Plus,
-  Edit,
-  Trash2,
-  Eye,
   Download,
-  Upload,
-  RefreshCw,
-  Filter,
-  Search,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
-  User,
   LogOut
 } from 'lucide-react';
-import { apiService } from '../../lib/apiService';
+import { Button } from '../../components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { Badge } from '../../components/ui/badge';
+import { Label } from '../../components/ui/label';
+import { Input } from '../../components/ui/input';
+import { apiService, ApiResponse } from '../../lib/apiService';
+import { supabase } from '../../integrations/supabase/supabaseClient';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -63,24 +47,17 @@ interface RecentOrder {
   }>;
 }
 
-const FarmerDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalRevenue: 0,
-    totalOrders: 0,
-    pendingOrders: 0,
-    deliveredOrders: 0,
-    totalProducts: 0,
-    lowStockItems: 0,
-    outOfStockItems: 0
-  });
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 interface InventoryItem {
   id: string;
   product_name: string;
+  description: string;
+  category: string;
   current_stock: number;
   min_stock_level: number;
+  max_stock_level: number;
   selling_price: number;
+  unit: string;
+  image_url: string;
   last_updated: string;
 }
 
@@ -92,33 +69,200 @@ interface StockAlert {
   alert_type: string;
   created_at: string;
   is_resolved: boolean;
+  message: string;
 }
 
+interface Order {
+  id: string;
+  total_amount: number;
+  status: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  quantity: number;
+  price: number;
+  image_url: string;
+  min_stock_level: number;
+  max_stock_level: number;
+  unit: string;
+  updated_at: string;
+}
+
+function FarmerDashboard() {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRevenue: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    deliveredOrders: 0,
+    totalProducts: 0,
+    lowStockItems: 0,
+    outOfStockItems: 0
+  });
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [editingProduct, setEditingProduct] = useState<InventoryItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [newProduct, setNewProduct] = useState<Partial<InventoryItem>>({
+    product_name: '',
+    description: '',
+    category: '',
+    current_stock: 0,
+    min_stock_level: 10,
+    selling_price: 0,
+    unit: 'kg',
+    image_url: '',
+  });
+
+  const validateForm = (product: Partial<InventoryItem>): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!product.product_name?.trim()) {
+      errors.product_name = 'Product name is required';
+    }
+    if (product.current_stock === undefined || product.current_stock < 0) {
+      errors.current_stock = 'Stock must be 0 or more';
+    }
+    if (!product.selling_price || product.selling_price <= 0) {
+      errors.selling_price = 'Price must be greater than 0';
+    }
+    if (!product.category) {
+      errors.category = 'Category is required';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleAddProduct = async () => {
+    if (!validateForm(newProduct)) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      const response = await apiService.createProduct({
+        name: newProduct.product_name || '',
+        description: newProduct.description || '',
+        category: newProduct.category || '',
+        quantity: newProduct.current_stock || 0,
+        price: newProduct.selling_price || 0,
+        image_url: newProduct.image_url || '',
+        min_stock_level: newProduct.min_stock_level || 10,
+        unit: newProduct.unit || 'kg'
+      });
+      
+      if (response.data) {
+        await loadInventoryItems();
+        setNewProduct({
+          product_name: '',
+          description: '',
+          category: '',
+          current_stock: 0,
+          min_stock_level: 10,
+          selling_price: 0,
+          unit: 'kg',
+          image_url: '',
+        });
+        setFormErrors({});
+        toast.success('Product added successfully!');
+      }
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast.error('Failed to add product. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditProduct = async (id: string) => {
+    if (!editingProduct) return;
+    
+    if (!validateForm(editingProduct)) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      const response = await apiService.updateProduct(id, {
+        name: editingProduct.product_name,
+        description: editingProduct.description,
+        category: editingProduct.category,
+        quantity: editingProduct.current_stock,
+        price: editingProduct.selling_price,
+        image_url: editingProduct.image_url,
+        min_stock_level: editingProduct.min_stock_level,
+        unit: editingProduct.unit || 'kg'
+      });
+      
+      if (response.data) {
+        await loadInventoryItems();
+        setEditingProduct(null);
+        toast.success('Product updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast.error('Failed to update product. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      const response = await apiService.deleteProduct(id);
+      if (response.data) {
+        await loadInventoryItems();
+        toast.success('Product deleted successfully!');
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product. Please try again.');
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Load statistics
-      await loadStats();
-      
-      // Load recent orders
-      await loadRecentOrders();
-      
-      // Load inventory items
-      await loadInventoryItems();
-      
-      // Load stock alerts
-      await loadStockAlerts();
-      
+      await Promise.all([
+        loadStats(),
+        loadRecentOrders(),
+        loadInventoryItems(),
+        loadStockAlerts()
+      ]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+  
+
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const response = await apiService.updateOrder(orderId, { status });
+      
+      if (response && response.data) {
+        await loadRecentOrders();
+        await loadStats();
+        toast.success('Order status updated successfully');
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Failed to update order status');
     }
   };
 
@@ -128,158 +272,281 @@ interface StockAlert {
 
   const loadStats = async () => {
     try {
-      // Get orders statistics
-      const ordersResponse = await apiService.getOrders();
-      
-      if (ordersResponse.data) {
-        const orders = ordersResponse.data;
-        const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
-        const totalOrders = orders.length;
-        const pendingOrders = orders.filter((o: any) => ['pending', 'confirmed', 'processing'].includes(o.status)).length;
-        const deliveredOrders = orders.filter((o: any) => o.status === 'delivered').length;
-
-        setStats(prev => ({
-          ...prev,
-          totalRevenue,
-          totalOrders,
-          pendingOrders,
-          deliveredOrders
-        }));
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Auth error:', userError);
+        toast.error('You must be logged in to view dashboard stats');
+        return;
       }
 
-      // Get products statistics
-      const productsResponse = await apiService.getProducts();
-      
-      if (productsResponse.data) {
-        const products = productsResponse.data;
-        const totalProducts = products.length;
-        const lowStockItems = products.filter((p: any) => p.quantity <= 10).length;
-        const outOfStockItems = products.filter((p: any) => p.quantity === 0).length;
+      // Get orders for this seller
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('seller_id', user.id);
 
-        setStats(prev => ({
-          ...prev,
-          totalProducts,
-          lowStockItems,
-          outOfStockItems
-        }));
-      }
+      if (ordersError) throw ordersError;
+
+      // Calculate order stats
+      const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      const totalOrders = orders?.length || 0;
+      const pendingOrders = orders?.filter(o => ['pending', 'confirmed', 'processing'].includes(o.status)).length || 0;
+      const deliveredOrders = orders?.filter(o => o.status === 'delivered').length || 0;
+
+      // Get products for this seller
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('seller_id', user.id);
+
+      if (productsError) throw productsError;
+
+      // Calculate product stats
+      const totalProducts = products?.length || 0;
+      const lowStockItems = products?.filter(p => (p.stock_quantity || 0) <= 10 && (p.stock_quantity || 0) > 0).length || 0;
+      const outOfStockItems = products?.filter(p => (p.stock_quantity || 0) <= 0).length || 0;
+
+      // Update stats state
+      setStats({
+        totalRevenue,
+        totalOrders,
+        pendingOrders,
+        deliveredOrders,
+        totalProducts,
+        lowStockItems,
+        outOfStockItems
+      });
 
     } catch (error) {
       console.error('Error loading stats:', error);
+      toast.error('Failed to load dashboard statistics');
     }
   };
 
   const loadRecentOrders = async () => {
     try {
-      const response = await apiService.getRecentOrders(10);
-      if (response.data) {
+      const response = await apiService.getRecentOrders(10) as ApiResponse<RecentOrder[]>;
+      if (response && response.data) {
         setRecentOrders(response.data);
+      } else {
+        console.error('Unexpected response format:', response);
+        setRecentOrders([]);
       }
     } catch (error) {
       console.error('Error loading recent orders:', error);
+      toast.error('Failed to load recent orders');
+      setRecentOrders([]);
     }
   };
 
   const loadInventoryItems = async () => {
     try {
-      const response = await apiService.getProducts();
-      if (response.data) {
-        // Transform products to inventory items format
-        const items = response.data.map((product: any) => ({
-          id: product.id,
-          product_name: product.name,
-          current_stock: product.quantity,
-          min_stock_level: 10, // Default minimum stock level
-          selling_price: product.price,
-          last_updated: product.updated_at
-        }));
-        setInventoryItems(items);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Auth error:', userError);
+        toast.error('You must be logged in to view inventory');
+        return;
       }
+
+      // Fetch products with category name
+      const { data: products, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories (name)
+        `)
+        .eq('seller_id', user.id)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      // Map to InventoryItem type
+      const items: InventoryItem[] = (products || []).map((product: any) => ({
+        id: product.id,
+        product_name: product.name || 'Unnamed Product',
+        description: product.description || '',
+        category: product.category?.name || 'Uncategorized',
+        current_stock: product.stock_quantity || 0,
+        min_stock_level: product.min_stock_level || 10,
+        max_stock_level: product.max_stock_level || 100,
+        selling_price: product.price || 0,
+        unit: product.unit || 'unit',
+        image_url: product.image_url || '',
+        last_updated: product.updated_at || new Date().toISOString()
+      }));
+
+      setInventoryItems(items);
     } catch (error) {
       console.error('Error loading inventory items:', error);
-    }
+      toast.error('Failed to load inventory items');
+    } 
+    setInventoryItems([]);
   };
 
-  const loadStockAlerts = async () => {
+  const loadStockAlerts = async (): Promise<void> => {
     try {
-      const response = await apiService.getProducts();
-      if (response.data) {
-        // Create stock alerts based on low stock products
-        const alerts = response.data
-          .filter((product: any) => product.quantity <= 10)
-          .map((product: any) => ({
-            id: product.id,
-            product_name: product.name,
-            current_stock: product.quantity,
-            min_stock_level: 10,
-            alert_type: product.quantity === 0 ? 'out_of_stock' : 'low_stock',
-            created_at: product.updated_at,
-            is_resolved: false
-          }));
-        setStockAlerts(alerts);
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Auth error:', userError);
+        toast.error('You must be logged in to view stock alerts');
+        return;
       }
+
+      // Fetch products that are low or out of stock for this seller
+      const { data: products, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('seller_id', user.id)
+        .or(`stock_quantity.lte.min_stock_level,stock_quantity.is.null`)
+        .order('stock_quantity', { ascending: true });
+
+      if (error) throw error;
+
+      // Map to StockAlert type
+      const alerts: StockAlert[] = (products || []).map((product: any) => {
+        const stock = product.stock_quantity || 0;
+        const minStock = product.min_stock_level || 10;
+        const isOutOfStock = stock <= 0;
+        
+        return {
+          id: `alert-${product.id}`,
+          product_name: product.name || 'Unnamed Product',
+          current_stock: stock,
+          min_stock_level: minStock,
+          alert_type: isOutOfStock ? 'out_of_stock' : 'low_stock',
+          created_at: product.updated_at || new Date().toISOString(),
+          is_resolved: false,
+          message: isOutOfStock 
+            ? `${product.name} is out of stock!`
+            : `${product.name} is running low on stock (${stock} remaining, min: ${minStock})`
+        };
+      });
+      
+      setStockAlerts(alerts);
     } catch (error) {
       console.error('Error loading stock alerts:', error);
+      toast.error('Failed to load stock alerts');
+      setStockAlerts([]);
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+  const handleUpdateStock = async (productId: string, quantity: number, operation: 'add' | 'subtract'): Promise<void> => {
     try {
-      const response = await apiService.updateOrder(orderId, { status });
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Auth error:', userError);
+        toast.error('You must be logged in to update stock');
+        return;
+      }
+
+      // Get current product data
+      const { data: product, error: fetchError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .eq('seller_id', user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!product) {
+        toast.error('Product not found');
+        return;
+      }
+
+      // Calculate new stock quantity
+      const currentStock = product.stock_quantity || 0;
+      const newQuantity = operation === 'add'
+        ? currentStock + quantity
+        : Math.max(0, currentStock - quantity);
+
+      // Update product in database
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({
+          stock_quantity: newQuantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId)
+        .eq('seller_id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setInventoryItems(prev =>
+        prev.map(item => {
+          if (item.id !== productId) return item;
+          const updatedItem = { 
+            ...item, 
+            current_stock: newQuantity,
+            last_updated: new Date().toISOString() 
+          };
+          
+          // Show appropriate toast message
+          if (newQuantity <= 0) {
+            toast.error(`${updatedItem.product_name} is out of stock!`);
+          } else if (newQuantity <= (item.min_stock_level ?? 5)) {
+            toast.warning(`Low stock alert for ${updatedItem.product_name}!`);
+          } else {
+            toast.success(`Updated stock for ${updatedItem.product_name}`);
+          }
+          
+          return updatedItem;
+        })
+      );
+
+      // Refresh related data
+      await Promise.all([
+        loadStockAlerts(),
+        loadStats()
+      ]);
       
-      if (response.data) {
-        await loadRecentOrders();
-        await loadStats();
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-    }
-  };
-
-  const handleUpdateStock = async (productId: string, quantity: number, operation: 'add' | 'subtract') => {
-    try {
-      // Get current product
-      const productResponse = await apiService.getProduct(productId);
-      if (productResponse.data) {
-        const currentQuantity = productResponse.data.quantity;
-        const newQuantity = operation === 'add' ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
-        
-        const response = await apiService.updateProduct(productId, { quantity: newQuantity });
-        if (response.data) {
-          await loadInventoryItems();
-          await loadStockAlerts();
-          await loadStats();
-        }
-      }
     } catch (error) {
       console.error('Error updating stock:', error);
+      toast.error('Failed to update stock');
     }
   };
 
   const handleResolveAlert = async (alertId: string) => {
     try {
-      // For now, just reload stock alerts
-      // In a real implementation, you might want to mark alerts as resolved in the database
-      await loadStockAlerts();
+      // In a real app, you would call an API to resolve the alert
+      // For now, we'll just remove it from the local state
+      setStockAlerts(prev => prev.filter((alert: StockAlert) => alert.id !== alertId));
+      toast.success('Alert resolved successfully');
     } catch (error) {
       console.error('Error resolving alert:', error);
+      toast.error('Failed to resolve alert');
     }
   };
 
   const exportInventoryReport = async () => {
     try {
-      const response = await apiService.getProducts();
+      const response = await apiService.getProducts() as ApiResponse<any>;
       if (response.data) {
+        const raw = Array.isArray(response.data)
+          ? (response.data as any[])
+          : ((response.data as any).results ?? []);
+        const normalized = raw.map((p: any, idx: number) => ({
+          id: String(p.id ?? p.product_id ?? p.uuid ?? `p-${Date.now()}-${idx}`),
+          name: p.name ?? p.product_name ?? 'Unnamed Product',
+          quantity: typeof p.quantity === 'number' ? p.quantity : (typeof p.current_stock === 'number' ? p.current_stock : 0),
+          price: Number(p.price ?? p.selling_price ?? 0),
+          category: (p.category && typeof p.category === 'object' ? p.category.name : p.category) ?? 'N/A',
+          updated_at: p.updated_at ?? p.last_updated ?? new Date().toISOString(),
+        }));
         // Create CSV content
         const headers = ['Product ID', 'Product Name', 'Current Stock', 'Price', 'Category', 'Last Updated'];
         const csvContent = [
           headers.join(','),
-          ...response.data.map((product: any) => [
+          ...normalized.map((product) => [
             product.id,
             product.name,
             product.quantity,
             product.price,
-            product.category?.name || 'N/A',
+            product.category,
             product.updated_at
           ].join(','))
         ].join('\n');
@@ -319,7 +586,9 @@ interface StockAlert {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
+    <>
+      <Toaster position="top-right" richColors closeButton />
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
       <div className="px-4 py-8">
       {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -335,13 +604,7 @@ interface StockAlert {
               <Plus className="h-4 w-4 mr-2" />
                 Add Product
               </Button>
-              <Button
-              variant="outline"
-              onClick={exportInventoryReport}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export Report
-            </Button>
+              {/* Removed duplicate Export Report button (export available in Inventory tab) */}
             <Button
                 variant="outline"
               onClick={() => navigate('/farmer')}
@@ -560,11 +823,23 @@ interface StockAlert {
           <TabsContent value="inventory" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Inventory Management</CardTitle>
-                <CardDescription>Manage product stock levels</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Inventory Management</CardTitle>
+                    <CardDescription>Manage product stock levels</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={exportInventoryReport}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export CSV
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-            <div className="space-y-4">
+                <div className="space-y-4">
                   {inventoryItems.map((item) => (
                     <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-4">
@@ -576,21 +851,21 @@ interface StockAlert {
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
-                            onClick={() => handleUpdateStock(item.product_id, 1, 'add')}
+                            onClick={() => handleUpdateStock(item.id, 1, 'add')}
                           >
                             +1
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleUpdateStock(item.product_id, 1, 'subtract')}
+                            onClick={() => handleUpdateStock(item.id, 1, 'subtract')}
                           >
                             -1
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleUpdateStock(item.product_id, 10, 'add')}
+                            onClick={() => handleUpdateStock(item.id, 10, 'add')}
                           >
                             +10
                           </Button>
@@ -623,8 +898,8 @@ interface StockAlert {
               <CardHeader>
                 <CardTitle>Stock Alerts</CardTitle>
                 <CardDescription>Manage stock alerts and notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
                   {stockAlerts.map((alert) => (
                     <div key={alert.id} className="border rounded-lg p-4">
@@ -642,20 +917,20 @@ interface StockAlert {
                           }>
                             {alert.alert_type.replace('_', ' ')}
                           </Badge>
-                              <Button
-                                size="sm"
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => handleResolveAlert(alert.id)}
                           >
                             Resolve
-                              </Button>
+                          </Button>
                         </div>
                       </div>
                     </div>
                   ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Settings Tab */}
@@ -664,8 +939,8 @@ interface StockAlert {
               <CardHeader>
                 <CardTitle>Dashboard Settings</CardTitle>
                 <CardDescription>Configure your dashboard preferences</CardDescription>
-              </CardHeader>
-              <CardContent>
+                  </CardHeader>
+                  <CardContent>
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="refresh-interval">Auto Refresh Interval (minutes)</Label>
@@ -690,13 +965,14 @@ interface StockAlert {
                     Save Settings
                   </Button>
         </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      </CardContent>
+    </Card>
+  </TabsContent>
+</Tabs>
       </div>
     </div>
+    </>
   );
-};
+}
 
-export default FarmerDashboard; 
+export default FarmerDashboard;

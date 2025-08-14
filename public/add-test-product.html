@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Test Product</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, textarea, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    button { background: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #45a049; }
+    #status { margin-top: 20px; padding: 10px; border-radius: 4px; display: none; }
+    .success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+    .error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+  </style>
+</head>
+<body>
+  <h1>Add Test Product</h1>
+  
+  <div class="form-group">
+    <label for="name">Product Name:</label>
+    <input type="text" id="name" value="Test Product">
+  </div>
+  
+  <div class="form-group">
+    <label for="description">Description:</label>
+    <textarea id="description" rows="3">This is a test product description.</textarea>
+  </div>
+  
+  <div class="form-group">
+    <label for="price">Price (₹):</label>
+    <input type="number" id="price" value="99.99" step="0.01">
+  </div>
+  
+  <div class="form-group">
+    <label for="stock">Stock Quantity:</label>
+    <input type="number" id="stock" value="10">
+  </div>
+  
+  <div class="form-group">
+    <label for="category">Category ID (UUID):</label>
+    <input type="text" id="category" value="">
+    <p><small>Note: You'll need a valid category UUID. Check your Supabase dashboard for available categories.</small></p>
+  </div>
+  
+  <button id="addProduct">Add Test Product</button>
+  
+  <div id="status"></div>
+  
+  <div style="margin-top: 30px;">
+    <h3>Existing Products</h3>
+    <div id="productsList">Loading products...</div>
+  </div>
+
+  <script>
+    // Supabase configuration
+    const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
+    
+    // Initialize Supabase
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    // Load existing products
+    async function loadProducts() {
+      const productsList = document.getElementById('productsList');
+      
+      try {
+        const { data: products, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        if (products && products.length > 0) {
+          productsList.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #f2f2f2;">
+                  <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Name</th>
+                  <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Price</th>
+                  <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Stock</th>
+                  <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${products.map(product => `
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${product.name || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">₹${product.price || '0'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${product.stock_quantity || '0'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace; font-size: 12px;">${product.id || 'N/A'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else {
+          productsList.innerHTML = 'No products found in the database.';
+        }
+      } catch (error) {
+        productsList.innerHTML = `Error loading products: ${error.message}`;
+        console.error('Error loading products:', error);
+      }
+    }
+    
+    // Add test product
+    document.getElementById('addProduct').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      status.style.display = 'none';
+      
+      const productData = {
+        name: document.getElementById('name').value,
+        description: document.getElementById('description').value,
+        price: parseFloat(document.getElementById('price').value),
+        stock_quantity: parseInt(document.getElementById('stock').value, 10),
+        category_id: document.getElementById('category').value || null,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .insert([productData])
+          .select();
+          
+        if (error) throw error;
+        
+        status.className = 'success';
+        status.innerHTML = `✅ Product added successfully! ID: ${data[0].id}`;
+        status.style.display = 'block';
+        
+        // Refresh the products list
+        loadProducts();
+        
+      } catch (error) {
+        status.className = 'error';
+        status.innerHTML = `❌ Error adding product: ${error.message}`;
+        status.style.display = 'block';
+        console.error('Error adding product:', error);
+      }
+    });
+    
+    // Load products when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProducts();
+      
+      // Try to get a category ID if available
+      supabase
+        .from('categories')
+        .select('id')
+        .limit(1)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            document.getElementById('category').value = data[0].id;
+          }
+        });
+    });
+  </script>
+</body>
+</html>

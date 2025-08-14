@@ -7,7 +7,7 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-class ApiService {
+export class ApiService {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}

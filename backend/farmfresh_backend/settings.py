@@ -7,7 +7,13 @@ SECRET_KEY = 'replace-this-with-a-secure-key'
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'nwdi.onrender.com',
+    'nwdi-mchd.onrender.com',
+    'nwdi-swayam-branch.onrender.com',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -18,12 +24,24 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'corsheaders',
     'users',
     'products',
     'orders',
     'reviews',
     'notifications',
 ]
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://nwdi.onrender.com",
+    "https://nwdi-mchd.onrender.com",
+    "https://nwdi-swayam-branch.onrender.com",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -51,6 +69,7 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

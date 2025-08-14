@@ -5,12 +5,13 @@ import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
 import { useNotification } from '../contexts/NotificationContext';
+import { supabase } from '../integrations/supabase/supabaseClient';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, ShoppingCart, Heart } from 'lucide-react';
-import { products, Product, ProductVariant } from '../lib/productsData';
+import { Product, ProductVariant } from '../lib/productsData';
 import heroFarm from '../assets/hero-farm.jpg';
 import fruitsImg from '../assets/fruits.jpg';
 import vegetablesImg from '../assets/vegetables.jpg';
@@ -22,8 +23,42 @@ const ProductsSection: React.FC = () => {
   const { user, loading: userLoading } = useSupabaseUser();
   const { showNotification } = useNotification();
   
-  const [productsList, setProductsList] = useState<Product[]>(products);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  // Fetch products from Supabase on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setProductsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        const mapped: Product[] = (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name || 'Unnamed Product',
+          price: Number(p.price || 0),
+          image: p.image_url || '',
+          category: p.category || 'Uncategorized',
+          description: p.description || '',
+          inStock: p.stock_quantity > 0
+        }));
+        
+        console.log('Fetched products from Supabase:', mapped);
+        setProductsList(mapped);
+      } catch (err) {
+        console.error('Error fetching products from Supabase:', err);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('category');
@@ -198,12 +233,12 @@ const ProductsSection: React.FC = () => {
     try {
       await removeFromWishlist(productId);
       // Find the product name for the notification
-      const product = products.find(p => p.id === productId);
+  const product = productsList.find(p => p.id === productId);
       const productName = product ? product.name : 'Item';
       showNotification(`${productName} removed from wishlist`, 'info');
     } catch (error) {
       // Find the product name for the error notification
-      const product = products.find(p => p.id === productId);
+  const product = productsList.find(p => p.id === productId);
       const productName = product ? product.name : 'Item';
       showNotification(`Failed to remove ${productName} from wishlist`, 'error');
     } finally {
@@ -376,7 +411,12 @@ const ProductsSection: React.FC = () => {
         </div>
 
         {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
+        {productsLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="h-16 w-16 animate-spin text-green-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">Loading products...</h3>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Search className="h-16 w-16 mx-auto" />

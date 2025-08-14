@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Minimal Supabase Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Minimal Supabase Test</h1>
+  <div id="output">Testing...</div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const output = document.getElementById('output');
+      
+      try {
+        // 1. Check if Supabase is loaded
+        if (!window.supabase) {
+          throw new Error('Supabase not loaded');
+        }
+        output.innerHTML += '✅ Supabase loaded<br>';
+        
+        // 2. Initialize client
+        const supabase = window.supabase.createClient(
+          'https://lzjhjecktllltkizgwnr.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug'
+        );
+        
+        output.innerHTML += '✅ Supabase client created<br>';
+        
+        // 3. Test auth
+        const { data: sessionData } = await supabase.auth.getSession();
+        output.innerHTML += `✅ Auth test: ${sessionData?.session ? 'Session found' : 'No active session'}<br>`;
+        
+        // 4. Test database query
+        const { data: products, error } = await supabase
+          .from('products')
+          .select('*')
+          .limit(1);
+          
+        if (error) {
+          output.innerHTML += `❌ Database error: ${error.message}`;
+        } else {
+          output.innerHTML += `✅ Database query successful (${products?.length || 0} products)`;
+          console.log('Products:', products);
+        }
+        
+      } catch (error) {
+        output.innerHTML += `<br><strong>❌ Error:</strong> ${error.message}`;
+        console.error('Test error:', error);
+      }
+    });
+  </script>
+</body>
+</html>

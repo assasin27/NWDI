@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Connection Test</title>
+  <!-- Use the latest version of Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/index.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .success { color: green; }
+    .error { color: red; }
+    .warning { color: orange; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Supabase Connection Test</h1>
+  
+  <div class="test">
+    <h2>1. Supabase Client Initialization</h2>
+    <div id="init-status">Testing...</div>
+  </div>
+
+  <div class="test">
+    <h2>2. Authentication</h2>
+    <div id="auth-status">Testing...</div>
+  </div>
+
+  <div class="test">
+    <h2>3. Products Table Access</h2>
+    <div id="products-status">Testing...</div>
+    <pre id="products-data"></pre>
+  </div>
+
+  <div class="test">
+    <h2>4. Categories Table Access</h2>
+    <div id="categories-status">Testing...</div>
+    <pre id="categories-data"></pre>
+  </div>
+
+  <div class="test">
+    <h2>5. Orders Table Access</h2>
+    <div id="orders-status">Testing...</div>
+    <pre id="orders-data"></pre>
+  </div>
+
+  <script>
+    // Supabase configuration
+    const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
+    
+    // Initialize Supabase client
+    let supabase;
+    
+    // Update status function
+    function updateStatus(elementId, message, isError = false) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.textContent = message;
+        element.className = isError ? 'error' : 'success';
+      } else {
+        console.error(`Element with ID ${elementId} not found`);
+      }
+    }
+    
+    // Initialize Supabase
+    function initializeSupabase() {
+      try {
+        // Check if Supabase is loaded
+        if (!window.supabase) {
+          throw new Error('Supabase not loaded. Check if the script is correctly included.');
+        }
+        
+        console.log('Supabase version:', window.supabase.SUPABASE_URL ? 'v2' : 'v1');
+        
+        // Initialize the client - try both v1 and v2 methods
+        if (window.supabase.createClient) {
+          // v2 style
+          supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+              detectSessionInUrl: false
+            }
+          });
+        } else if (window.supabase.client) {
+          // v1 style
+          supabase = window.supabase.client(supabaseUrl, supabaseKey);
+        } else {
+          throw new Error('Could not determine Supabase client initialization method');
+        }
+        
+        // Test if auth is available
+        if (!supabase || !supabase.auth) {
+          throw new Error('Supabase auth module not available');
+        }
+        
+        updateStatus('init-status', 'Supabase client initialized successfully');
+        return true;
+      } catch (error) {
+        updateStatus('init-status', `Failed to initialize Supabase: ${error.message}`, true);
+        console.error('Supabase initialization error:', error);
+        return false;
+      }
+    }
+    
+    // Test functions
+    async function testConnection() {
+      try {
+        // Test client initialization
+        updateStatus('init-status', 'Supabase client initialized successfully');
+        
+        // Test authentication
+        await testAuth();
+        
+        // Test table access
+        await testTable('products', 'products-status', 'products-data');
+        await testTable('categories', 'categories-status', 'categories-data');
+        await testTable('orders', 'orders-status', 'orders-data');
+        
+      } catch (error) {
+        console.error('Test failed:', error);
+        updateStatus('init-status', `Test failed: ${error.message}`, true);
+      }
+    }
+    
+    async function testAuth() {
+      try {
+        // First check if auth is available
+        if (!supabase.auth) {
+          throw new Error('Auth module not available in Supabase client');
+        }
+        
+        // Try to get the current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (session) {
+          updateStatus('auth-status', `Authenticated as: ${session.user?.email || 'Unknown email'}`);
+        } else {
+          updateStatus('auth-status', 'Not authenticated (this is expected if you\'re not logged in)', false);
+        }
+      } catch (error) {
+        const errorMessage = error.message || 'Unknown error during authentication';
+        updateStatus('auth-status', `Authentication error: ${errorMessage}`, true);
+        console.error('Auth test error:', error);
+        throw error;
+      }
+    }
+    
+    async function testTable(tableName, statusId, dataId) {
+      try {
+        updateStatus(statusId, `Querying ${tableName} table...`);
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .limit(2);
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          updateStatus(statusId, `Successfully queried ${tableName} (${data.length} records found)`);
+          document.getElementById(dataId).textContent = JSON.stringify(data, null, 2);
+        } else {
+          updateStatus(statusId, `No data found in ${tableName} table`, false);
+          document.getElementById(dataId).textContent = 'No records found';
+        }
+      } catch (error) {
+        updateStatus(statusId, `Error querying ${tableName}: ${error.message}`, true);
+        document.getElementById(dataId).textContent = error.message;
+      }
+    }
+    
+    // Run tests when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      if (initializeSupabase()) {
+        testConnection().catch(error => {
+          console.error('Test connection failed:', error);
+          updateStatus('init-status', `Test connection failed: ${error.message}`, true);
+        });
+      }
+    });
+    
+    // Make testConnection available globally for manual testing
+    window.testConnection = testConnection;
+  </script>
+</body>
+</html>

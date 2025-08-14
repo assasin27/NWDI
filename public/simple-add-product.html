@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Add Product</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; }
+    button { background: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }
+    #result { margin-top: 20px; padding: 10px; border-radius: 4px; display: none; }
+    .success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+    .error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+  </style>
+</head>
+<body>
+  <h1>Simple Add Product</h1>
+  
+  <div class="form-group">
+    <label for="name">Product Name:</label>
+    <input type="text" id="name" value="Test Product">
+  </div>
+  
+  <div class="form-group">
+    <label for="price">Price (₹):</label>
+    <input type="number" id="price" value="99.99" step="0.01">
+  </div>
+  
+  <button id="addProduct">Add Test Product</button>
+  
+  <div id="result"></div>
+  
+  <div style="margin-top: 30px;">
+    <h3>Raw Response</h3>
+    <pre id="rawResponse">Click the button to see raw response</pre>
+  </div>
+
+  <script>
+    // Supabase configuration
+    const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
+    
+    // Initialize Supabase
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    // Add test product with minimal fields
+    document.getElementById('addProduct').addEventListener('click', async () => {
+      const resultEl = document.getElementById('result');
+      const rawEl = document.getElementById('rawResponse');
+      resultEl.style.display = 'none';
+      
+      const productData = {
+        name: document.getElementById('name').value,
+        price: parseFloat(document.getElementById('price').value),
+        created_at: new Date().toISOString()
+      };
+      
+      try {
+        rawEl.textContent = 'Sending request...';
+        
+        // Try with minimal required fields first
+        const { data, error } = await supabase
+          .from('products')
+          .insert([productData])
+          .select();
+          
+        // Show raw response for debugging
+        rawEl.textContent = JSON.stringify({
+          data,
+          error: error ? {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          } : null
+        }, null, 2);
+          
+        if (error) throw error;
+        
+        resultEl.className = 'success';
+        resultEl.innerHTML = `✅ Product added successfully! ID: ${data[0].id}`;
+        resultEl.style.display = 'block';
+        
+      } catch (error) {
+        resultEl.className = 'error';
+        resultEl.innerHTML = `❌ Error adding product: ${error.message}`;
+        resultEl.style.display = 'block';
+        console.error('Error adding product:', error);
+        
+        // Show more error details in console
+        if (error.details) console.error('Error details:', error.details);
+        if (error.hint) console.error('Error hint:', error.hint);
+      }
+    });
+  </script>
+</body>
+</html>

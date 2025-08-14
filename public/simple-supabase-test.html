@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Supabase Test</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Simple Supabase Test</h1>
+  <div id="output">Testing Supabase connection...</div>
+  <pre id="result"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    const resultEl = document.getElementById('result');
+    
+    // Supabase configuration
+    const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
+    
+    async function runTest() {
+      try {
+        // Log Supabase object for debugging
+        console.log('Supabase object:', window.supabase);
+        
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Test 1: Check if client was created
+        output.innerHTML = '✅ Supabase client created successfully<br>';
+        
+        // Test 2: Try to get session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          output.innerHTML += `❌ Error getting session: ${sessionError.message}<br>`;
+        } else {
+          output.innerHTML += `✅ Session check: ${sessionData?.session ? 'Authenticated' : 'Not authenticated'}<br>`;
+        }
+        
+        // Test 3: Try to query products table
+        const { data: products, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .limit(1);
+        
+        if (productsError) {
+          output.innerHTML += `❌ Error querying products: ${productsError.message}<br>`;
+        } else {
+          output.innerHTML += `✅ Products query successful (${products?.length || 0} records)<br>`;
+          resultEl.textContent = JSON.stringify(products, null, 2);
+        }
+        
+      } catch (error) {
+        output.innerHTML += `❌ Test failed: ${error.message}<br>`;
+        console.error('Test error:', error);
+      }
+    }
+    
+    // Run the test when the page loads
+    document.addEventListener('DOMContentLoaded', runTest);
+  </script>
+</body>
+</html>

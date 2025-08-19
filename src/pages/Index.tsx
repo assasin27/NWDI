@@ -6,6 +6,7 @@ import ProductsSection from '../components/ProductsSection';
 import { AboutSection } from '../components/AboutSection';
 import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
+import LanguageAlert from '../components/LanguageAlert';
 
 const Index: React.FC = () => {
   const location = useLocation();
@@ -29,6 +30,7 @@ const Index: React.FC = () => {
   return (
     <Layout>
       <div className="scroll-smooth">
+        <LanguageAlert />
         <Hero />
         <ProductsSection />
         <AboutSection />

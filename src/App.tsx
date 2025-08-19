@@ -73,17 +73,8 @@ class ErrorBoundary extends React.Component<
 }
 
 function App() {
-  // One-time alert and Google Translate widget loader
+  // Google Translate widget loader
   React.useEffect(() => {
-    // Show alert once per session
-    try {
-      const key = 'langAlertShown';
-      if (!sessionStorage.getItem(key)) {
-        alert('You can select the language according to your preference');
-        sessionStorage.setItem(key, '1');
-      }
-    } catch {}
-
     // Persistently shift page based on actual translation state
     const updateShiftFromCookie = () => {
       try {

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { ArrowRight, Leaf, ShoppingCart, Users, Package, User } from 'lucide-react';
+import { useSupabaseUser } from '../lib/useSupabaseUser';
 import heroFarm from '../assets/hero-farm.jpg';
 import fruitsImg from '../assets/fruits.jpg';
 import vegetablesImg from '../assets/vegetables.jpg';
 import farmerPortrait from '../assets/farmer-portrait.jpg';
 
 const Hero: React.FC = () => {
+  const { user } = useSupabaseUser();
   return (
     <section id="home" className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100 overflow-hidden min-h-screen flex items-center justify-center">
       {/* Background Image */}
@@ -92,34 +94,36 @@ const Hero: React.FC = () => {
               Learn More
             </Button>
             
-            {/* Separate Login and Signup Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-2 border-green-600 text-green-600 hover:bg-green-50 hover:border-green-700 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
-                onClick={() => {
-                  // Navigate to login page
-                  window.location.href = '/login';
-                }}
-              >
-                <User className="mr-2 h-5 w-5" />
-                Login
-              </Button>
-              
-              <Button
-                variant="default"
-                size="lg"
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl"
-                onClick={() => {
-                  // Navigate to signup page
-                  window.location.href = '/signup';
-                }}
-              >
-                <User className="mr-2 h-5 w-5" />
-                Sign Up
-              </Button>
-            </div>
+            {/* Separate Login and Signup Buttons - Only show when not logged in */}
+            {!user && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-2 border-green-600 text-green-600 hover:bg-green-50 hover:border-green-700 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+                  onClick={() => {
+                    // Navigate to login page
+                    window.location.href = '/login';
+                  }}
+                >
+                  <User className="mr-2 h-5 w-5" />
+                  Login
+                </Button>
+                
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+                  onClick={() => {
+                    // Navigate to signup page
+                    window.location.href = '/signup';
+                  }}
+                >
+                  <User className="mr-2 h-5 w-5" />
+                  Sign Up
+                </Button>
+              </div>
+            )}
           </div>
           
           {/* Enhanced Stats */}

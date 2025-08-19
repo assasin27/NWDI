@@ -216,6 +216,17 @@ const NavBar: React.FC = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
+            {/* Only show login/signup if not loading and not logged in */}
+            { ! loading && !user ? (
+              <div className="flex items-center space-x-2">
+                <Link to="/login">
+                  <Button variant="ghost" className="text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all duration-300">
+                    Login</Button></Link>
+                <Link to="/signup">
+                  <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md hover:shadow-lg transition-all duration-300">
+                    Sign Up</Button></Link>
+              </div>
+            ) : null}
             {user ? (
               <>
                 {/* Language Button + Dropdown (logged-in) */}

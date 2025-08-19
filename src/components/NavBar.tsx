@@ -11,7 +11,9 @@ import {
   LogOut,
   Package,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Languages,
+  Check
 } from 'lucide-react';
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
@@ -21,6 +23,7 @@ import { supabase } from '../integrations/supabase/supabaseClient';
 const NavBar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const { cart: cartItems } = useCart();
   const { wishlist: wishlistItems } = useWishlist();
   const { user, loading } = useSupabaseUser();
@@ -37,13 +40,62 @@ const NavBar: React.FC = () => {
       if (isUserMenuOpen && !target.closest('.user-menu-container')) {
         setIsUserMenuOpen(false);
       }
+      if (isLangOpen && !target.closest('.lang-menu-container')) {
+        setIsLangOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isUserMenuOpen]);
+  }, [isUserMenuOpen, isLangOpen]);
+
+  const toggleLangMenu = () => setIsLangOpen((v) => !v);
+
+  const setLanguage = (lang: string) => {
+    // Persist page shift while translated; remove when back to English
+    try {
+      if (lang && lang !== 'en') {
+        document.documentElement.classList.add('gt-shifted');
+        try { localStorage.setItem('gtShiftActive', '1'); } catch {}
+      } else {
+        document.documentElement.classList.remove('gt-shifted');
+        try { localStorage.removeItem('gtShiftActive'); } catch {}
+      }
+    } catch {}
+
+    try {
+      const combo = document.querySelector<HTMLSelectElement>('#google_translate_element select, .goog-te-combo');
+      if (combo) {
+        combo.value = lang;
+        combo.dispatchEvent(new Event('change'));
+        return;
+      }
+    } catch {}
+    // Fallback via cookie
+    try {
+      const expires = new Date();
+      expires.setFullYear(expires.getFullYear() + 1);
+      const value = `/en/${lang}`;
+      const cookie = `googtrans=${value};expires=${expires.toUTCString()};path=/`;
+      const host = window.location.hostname;
+      document.cookie = `${cookie};domain=${host}`;
+      if (!host.startsWith('localhost')) {
+        document.cookie = `${cookie};domain=.${host}`;
+      }
+      window.location.reload();
+    } catch {}
+  };
+
+  const getActiveLang = (): string => {
+    try {
+      const match = document.cookie.match(/googtrans=\/[^/]+\/([^;]+)/);
+      return match?.[1] || 'en';
+    } catch {
+      return 'en';
+    }
+  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -100,8 +152,8 @@ const NavBar: React.FC = () => {
   const wishlistItemCount = wishlistItems?.length || 0;
 
   return (
-    <nav className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
-      <div className="px-4 sm:px-6 lg:px-8">
+    <nav id="site-navbar" className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
+      <div className="px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
@@ -119,7 +171,7 @@ const NavBar: React.FC = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center space-x-6">
             <button 
               onClick={scrollToTop}
               className="text-gray-700 hover:text-green-600 transition-colors text-lg font-medium relative group"
@@ -163,9 +215,47 @@ const NavBar: React.FC = () => {
           </div>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
             {user ? (
               <>
+                {/* Language Button + Dropdown (logged-in) */}
+                <div className="relative lang-menu-container">
+                  <Button
+                    variant="default"
+                    onClick={toggleLangMenu}
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
+                    aria-haspopup="menu"
+                    aria-expanded={isLangOpen}
+                    aria-label="Select language"
+                  >
+                    <Languages className="h-4 w-4" />
+                    <span className="hidden sm:inline">Language/भाषा</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {isLangOpen && (
+                    <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-green-200 z-50 overflow-hidden">
+                      <div className="py-1">
+                        {[
+                          { code: 'en', label: 'English' },
+                          { code: 'hi', label: 'हिंदी (Hindi)' },
+                          { code: 'mr', label: 'मराठी (Marathi)' },
+                          { code: 'gu', label: 'ગુજરાતી (Gujarati)' },
+                        ].map(({ code, label }) => (
+                          <button
+                            key={code}
+                            onClick={() => { setLanguage(code); setIsLangOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-green-50 transition-colors ${getActiveLang() === code ? 'bg-green-50 text-green-700' : 'text-gray-700'}`}
+                          >
+                            <span>{label}</span>
+                            {getActiveLang() === code && <Check className="h-4 w-4 text-green-600" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Hidden Google container for widget init (logged-in) */}
+                <div id="google_translate_element" className="sr-only absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true" />
                 <Link to="/wishlist" className="relative">
                   <Button variant="ghost" size="icon" className="relative hover:bg-red-50 transition-colors duration-300">
                     <Heart className="h-5 w-5" />
@@ -266,6 +356,48 @@ const NavBar: React.FC = () => {
               </>
             ) : (
               <div className="flex items-center space-x-2">
+                {/* Language Button + Dropdown */}
+                <div className="relative lang-menu-container">
+                  <Button
+                    variant="default"
+                    onClick={toggleLangMenu}
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
+                    aria-haspopup="menu"
+                    aria-expanded={isLangOpen}
+                    aria-label="Select language"
+                  >
+                    <Languages className="h-4 w-4" />
+                    <span className="hidden sm:inline">Language/भाषा</span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${isLangOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {isLangOpen && (
+                    <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-green-200 z-50 overflow-hidden">
+                      <div className="py-1">
+                        {[
+                          { code: 'en', label: 'English' },
+                          { code: 'hi', label: 'हिंदी (Hindi)' },
+                          { code: 'mr', label: 'मराठी (Marathi)' },
+                          { code: 'gu', label: 'ગુજરાતી (Gujarati)' },
+                        ].map(({ code, label }) => (
+                          <button
+                            key={code}
+                            onClick={() => { setLanguage(code); setIsLangOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-green-50 transition-colors ${getActiveLang() === code ? 'bg-green-50 text-green-700' : 'text-gray-700'}`}
+                          >
+                            <span>{label}</span>
+                            {getActiveLang() === code && <Check className="h-4 w-4 text-green-600" />}
+                          </button>
+                        ))}
+                        {/* Marwadi not supported by Google Translate */}
+                        <div className="px-4 py-2 text-sm text-gray-400 cursor-not-allowed flex items-center justify-between border-t border-gray-100" title="Not available in Google Translate">
+                          <span>Marwadi (Not available)</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Hidden Google container for widget init */}
+                <div id="google_translate_element" className="sr-only absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true" />
                 <Link to="/login">
                   <Button variant="ghost" className="text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all duration-300">
                     Login
@@ -296,7 +428,7 @@ const NavBar: React.FC = () => {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-sm border-t border-gray-200/50 shadow-lg">
+            <div className="px-2 pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-sm border-t border-gray-200/50 shadow-lg max-h-[calc(100vh-4rem)] overflow-y-auto">
               <button 
                 onClick={scrollToTop}
                 className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-all duration-300"

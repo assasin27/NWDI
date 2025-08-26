@@ -9,12 +9,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, ShoppingCart, Heart } from 'lucide-react';
+import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { products, Product, ProductVariant } from '../lib/productsData';
 import heroFarm from '../assets/hero-farm.jpg';
 import fruitsImg from '../assets/fruits.jpg';
 import vegetablesImg from '../assets/vegetables.jpg';
-import farmerPortrait from '../assets/farmer-portrait.jpg';
 
 const ProductsSection: React.FC = () => {
   const { addToCart } = useCart();
@@ -127,21 +126,16 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
-    console.log('🔍 Debug: handleAddToCart called for product:', product.name);
-    console.log('🔍 Debug: Product has variants:', !!product.variants);
-    console.log('🔍 Debug: Variants:', product.variants);
-
+    
     // Check if product has variants
     if (product.variants && product.variants.length > 0) {
-      console.log('🔍 Debug: Showing variant selector for cart');
-      setSelectedProduct(product);
+            setSelectedProduct(product);
       setVariantAction('cart');
       setShowVariantSelector(true);
       return;
     }
 
-    console.log('🔍 Debug: No variants, adding directly to cart');
-    setCartWishlistLoading(true);
+        setCartWishlistLoading(true);
     try {
       const result = await addToCart(product);
       if (result) {
@@ -164,21 +158,16 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
-    console.log('🔍 Debug: handleAddToWishlist called for product:', product.name);
-    console.log('🔍 Debug: Product has variants:', !!product.variants);
-    console.log('🔍 Debug: Variants:', product.variants);
-
+    
     // Check if product has variants
     if (product.variants && product.variants.length > 0) {
-      console.log('🔍 Debug: Showing variant selector for wishlist');
-      setSelectedProduct(product);
+            setSelectedProduct(product);
       setVariantAction('wishlist');
       setShowVariantSelector(true);
       return;
     }
 
-    console.log('🔍 Debug: No variants, adding directly to wishlist');
-    setCartWishlistLoading(true);
+        setCartWishlistLoading(true);
     try {
       const result = await addToWishlist(product);
       if (result) {
@@ -214,10 +203,7 @@ const ProductsSection: React.FC = () => {
   const handleVariantSelect = async (variant: ProductVariant) => {
     if (!selectedProduct) return;
     
-    console.log('🔍 Debug: handleVariantSelect called');
-    console.log('🔍 Debug: Selected variant:', variant.name);
-    console.log('🔍 Debug: Variant action:', variantAction);
-    
+        
     setCartWishlistLoading(true);
     try {
       // Create a product with the selected variant
@@ -228,20 +214,16 @@ const ProductsSection: React.FC = () => {
         selectedVariant: variant
       };
 
-      console.log('🔍 Debug: Product with variant:', productWithVariant);
-
+      
       if (variantAction === 'cart') {
-        console.log('🔍 Debug: Adding variant to cart');
-        await addToCart(productWithVariant);
+                await addToCart(productWithVariant);
         showNotification(`${variant.name} variant added to cart!`, 'success');
       } else if (variantAction === 'wishlist') {
-        console.log('🔍 Debug: Adding variant to wishlist');
-        await addToWishlist(productWithVariant);
+                await addToWishlist(productWithVariant);
         showNotification(`${variant.name} variant added to wishlist!`, 'info');
       }
     } catch (error) {
-      console.error('🔍 Debug: Error in handleVariantSelect:', error);
-      showNotification(`Failed to add ${variant.name} variant`, 'error');
+            showNotification(`Failed to add ${variant.name} variant`, 'error');
     } finally {
       setCartWishlistLoading(false);
       setShowVariantSelector(false);

@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { apiService } from '@/lib/apiService';
 
 export interface Product {
   id: string;
@@ -17,64 +17,32 @@ export interface Product {
 export const productService = {
   // Get all products
   async getAllProducts(): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching products:', error);
+    const response = await apiService.getAllProducts();
+    if (response.error) {
+      console.error('Error fetching products:', response.error);
       return [];
     }
+    return response.data || [];
   },
 
   // Get products by category
   async getProductsByCategory(category: string): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category', category)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products by category:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching products by category:', error);
+    const response = await apiService.getProductsByCategory(category);
+    if (response.error) {
+      console.error('Error fetching products by category:', response.error);
       return [];
     }
+    return response.data || [];
   },
 
   // Get product by ID
   async getProductById(productId: string): Promise<Product | null> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', productId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching product:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error fetching product:', error);
+    const response = await apiService.getProductById(productId);
+    if (response.error) {
+      console.error('Error fetching product:', response.error);
       return null;
     }
+    return response.data;
   },
 
   // Add new product
@@ -88,150 +56,72 @@ export const productService = {
   
     in_stock?: boolean;
   }): Promise<Product | null> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert([{
-          ...productData,
-    
-          in_stock: productData.in_stock !== undefined ? productData.in_stock : true,
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding product:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error adding product:', error);
+    const response = await apiService.addProduct(productData);
+    if (response.error) {
+      console.error('Error adding product:', response.error);
       return null;
     }
+    return response.data;
   },
 
   // Update product
   async updateProduct(productId: string, updates: Partial<Product>): Promise<Product | null> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .update(updates)
-        .eq('id', productId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating product:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error updating product:', error);
+    const response = await apiService.updateProduct(productId, updates);
+    if (response.error) {
+      console.error('Error updating product:', response.error);
       return null;
     }
+    return response.data;
   },
 
   // Delete product
   async deleteProduct(productId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) {
-        console.error('Error deleting product:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error deleting product:', error);
+    const response = await apiService.deleteProduct(productId);
+    if (response.error) {
+      console.error('Error deleting product:', response.error);
       return false;
     }
+    return true;
   },
 
   // Search products
   async searchProducts(query: string): Promise<Product[]> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error searching products:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error searching products:', error);
+    const response = await apiService.searchProducts(query);
+    if (response.error) {
+      console.error('Error searching products:', response.error);
       return [];
     }
+    return response.data || [];
   },
 
   // Get product categories
   async getProductCategories(): Promise<string[]> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .order('category');
-
-      if (error) {
-        console.error('Error fetching product categories:', error);
-        return [];
-      }
-
-      const categories = [...new Set(data?.map(p => p.category) || [])];
-      return categories;
-    } catch (error) {
-      console.error('Error fetching product categories:', error);
+    const response = await apiService.getProductCategories();
+    if (response.error) {
+      console.error('Error fetching product categories:', response.error);
       return [];
     }
+    return response.data || [];
   },
 
   // Update product stock status
   async updateProductStock(productId: string, inStock: boolean): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ in_stock: inStock })
-        .eq('id', productId);
-
-      if (error) {
-        console.error('Error updating product stock:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error updating product stock:', error);
+    const response = await apiService.updateProductStock(productId, inStock);
+    if (response.error) {
+      console.error('Error updating product stock:', response.error);
       return false;
     }
+    return true;
   },
 
   // Get products count
   async getProductsCount(): Promise<number> {
-    try {
-      const { count, error } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-
-      if (error) {
-        console.error('Error getting products count:', error);
-        return 0;
-      }
-
-      return count || 0;
-    } catch (error) {
-      console.error('Error getting products count:', error);
+    const response = await apiService.getProductsCount();
+    if (response.error) {
+      console.error('Error getting products count:', response.error);
       return 0;
     }
+    return response.data.count || 0;
   },
 
   // Get products statistics
@@ -241,34 +131,15 @@ export const productService = {
     inStockProducts: number;
     outOfStockProducts: number;
   }> {
-    try {
-      const { data: products } = await supabase
-        .from('products')
-        .select('in_stock');
-
-      if (!products) {
-        return {
-          totalProducts: 0,
-          inStockProducts: 0,
-          outOfStockProducts: 0,
-        };
-      }
-
-      const stats = {
-        totalProducts: products.length,
-
-        inStockProducts: products.filter(p => p.in_stock).length,
-        outOfStockProducts: products.filter(p => !p.in_stock).length,
-      };
-
-      return stats;
-    } catch (error) {
-      console.error('Error getting product stats:', error);
+    const response = await apiService.getProductStats();
+    if (response.error) {
+      console.error('Error getting product stats:', response.error);
       return {
         totalProducts: 0,
         inStockProducts: 0,
         outOfStockProducts: 0,
       };
     }
+    return response.data;
   },
-}; 
+};

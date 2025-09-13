@@ -3,8 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
 import ProductsSection from '../ProductsSection';
-import { CartProvider } from '../../hooks/useCart';
-import { WishlistProvider } from '../../hooks/useWishlist';
+import { CartProvider, useCart } from '../../hooks/useCart';
+import { WishlistProvider, useWishlist } from '../../hooks/useWishlist';
+import { useSupabaseUser } from '../../lib/useSupabaseUser';
 
 // Mock the hooks
 jest.mock('../../hooks/useCart', () => ({
@@ -160,14 +161,13 @@ describe('ProductsSection Component', () => {
       expect(screen.getByText('Please login first to add items to wishlist')).toBeInTheDocument();
     });
 
-    test('allows adding to cart when authenticated', async () => {
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+    test('allows adding to cart when authenticated', async () => {        (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { id: 'test-user', email: 'test@example.com' },
         loading: false,
       });
 
       const mockAddToCart = vi.fn();
-      vi.mocked(require('../../hooks/useCart').useCart).mockReturnValue({
+      (useCart as jest.MockedFunction<typeof useCart>).mockReturnValue({
         addToCart: mockAddToCart,
       });
 
@@ -186,13 +186,11 @@ describe('ProductsSection Component', () => {
       const mockAddToWishlist = vi.fn();
       const mockRemoveFromWishlist = vi.fn();
       
-      vi.mocked(require('../../hooks/useWishlist').useWishlist).mockReturnValue({
+      (useWishlist as jest.MockedFunction<typeof useWishlist>).mockReturnValue({
         addToWishlist: mockAddToWishlist,
         removeFromWishlist: mockRemoveFromWishlist,
         wishlist: [],
-      });
-
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+      });        (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { id: 'test-user', email: 'test@example.com' },
         loading: false,
       });
@@ -207,7 +205,7 @@ describe('ProductsSection Component', () => {
     });
 
     test('shows filled heart when item is wishlisted', () => {
-      vi.mocked(require('../../hooks/useWishlist').useWishlist).mockReturnValue({
+      (useWishlist as jest.MockedFunction<typeof useWishlist>).mockReturnValue({
         addToWishlist: vi.fn(),
         removeFromWishlist: vi.fn(),
         wishlist: [{ id: 'f1', name: 'Guava' }],
@@ -221,13 +219,13 @@ describe('ProductsSection Component', () => {
 
   describe('Loading States', () => {
     test('shows loading spinner when adding to cart', async () => {
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+      (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { id: 'test-user', email: 'test@example.com' },
         loading: false,
       });
 
       const mockAddToCart = vi.fn().mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      vi.mocked(require('../../hooks/useCart').useCart).mockReturnValue({
+      (useCart as jest.MockedFunction<typeof useCart>).mockReturnValue({
         addToCart: mockAddToCart,
       });
 
@@ -241,13 +239,13 @@ describe('ProductsSection Component', () => {
 
   describe('Error Handling', () => {
     test('shows error message when cart operation fails', async () => {
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+      (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { id: 'test-user', email: 'test@example.com' },
         loading: false,
       });
 
       const mockAddToCart = vi.fn().mockRejectedValue(new Error('Failed to add to cart'));
-      vi.mocked(require('../../hooks/useCart').useCart).mockReturnValue({
+      (useCart as jest.MockedFunction<typeof useCart>).mockReturnValue({
         addToCart: mockAddToCart,
       });
 

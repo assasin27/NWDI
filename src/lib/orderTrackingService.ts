@@ -1,4 +1,4 @@
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { apiService } from '@/lib/apiService';
 
 export interface OrderStatus {
   id: string;
@@ -60,22 +60,18 @@ export const orderTrackingService = {
   // Get order status history
   async getOrderStatusHistory(orderId: string): Promise<OrderStatus[]> {
     try {
-      const { data, error } = await supabase
-        .from('order_status_history')
-        .select('*')
-        .eq('order_id', orderId)
-        .order('updated_at', { ascending: false });
+      const result = await apiService.getOrderStatusHistory(orderId);
 
-      if (error) {
-        if (isTableNotFoundError(error)) {
+      if (result.error) {
+        if (isTableNotFoundError(result.error)) {
           console.log('Order status history table does not exist yet. Returning empty array.');
           return [];
         }
-        console.error('Error fetching order status history:', error);
+        console.error('Error fetching order status history:', result.error);
         return [];
       }
 
-      return data || [];
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching order status history:', error);
       return [];
@@ -93,39 +89,33 @@ export const orderTrackingService = {
   ): Promise<boolean> {
     try {
       // Add to status history
-      const { error: historyError } = await supabase
-        .from('order_status_history')
-        .insert({
-          order_id: orderId,
-          status,
-          status_message: statusMessage,
-          tracking_number: trackingNumber,
-          estimated_delivery: estimatedDelivery,
-          updated_at: new Date().toISOString(),
-          updated_by: updatedBy
-        });
+      const historyResult = await apiService.updateOrderStatusHistory(
+        orderId,
+        status,
+        statusMessage,
+        trackingNumber,
+        estimatedDelivery,
+        updatedBy
+      );
 
-      if (historyError && !isTableNotFoundError(historyError)) {
-        console.error('Error adding to status history:', historyError);
+      if (historyResult.error && !isTableNotFoundError(historyResult.error)) {
+        console.error('Error adding to status history:', historyResult.error);
       }
 
       // Update main order
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({
-          status,
-          tracking_number: trackingNumber,
-          estimated_delivery: estimatedDelivery,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      const orderResult = await apiService.updateOrderMainStatus(
+        orderId,
+        status,
+        trackingNumber,
+        estimatedDelivery
+      );
 
-      if (orderError) {
-        if (isTableNotFoundError(orderError)) {
+      if (orderResult.error) {
+        if (isTableNotFoundError(orderResult.error)) {
           console.log('Orders table does not exist yet. Cannot update order status.');
           return false;
         }
-        console.error('Error updating order status:', orderError);
+        console.error('Error updating order status:', orderResult.error);
         return false;
       }
 
@@ -139,25 +129,18 @@ export const orderTrackingService = {
   // Get order details
   async getOrder(orderId: string): Promise<OrderDetails | null> {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (*)
-        `)
-        .eq('id', orderId)
-        .single();
+      const result = await apiService.getOrderDetails(orderId);
 
-      if (error) {
-        if (isTableNotFoundError(error)) {
+      if (result.error) {
+        if (isTableNotFoundError(result.error)) {
           console.log('Orders table does not exist yet. Returning null.');
           return null;
         }
-        console.error('Error fetching order:', error);
+        console.error('Error fetching order:', result.error);
         return null;
       }
 
-      return data;
+      return result.data;
     } catch (error) {
       console.error('Error fetching order:', error);
       return null;
@@ -167,25 +150,18 @@ export const orderTrackingService = {
   // Get customer orders
   async getCustomerOrders(customerId: string): Promise<OrderDetails[]> {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (*)
-        `)
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
+      const result = await apiService.getCustomerOrderDetails(customerId);
 
-      if (error) {
-        if (isTableNotFoundError(error)) {
+      if (result.error) {
+        if (isTableNotFoundError(result.error)) {
           console.log('Orders table does not exist yet. Returning empty array.');
           return [];
         }
-        console.error('Error fetching customer orders:', error);
+        console.error('Error fetching customer orders:', result.error);
         return [];
       }
 
-      return data || [];
+      return result.data || [];
     } catch (error) {
       console.error('Error fetching customer orders:', error);
       return [];
@@ -446,4 +422,4 @@ export const orderTrackingService = {
       return [];
     }
   }
-}; 
+};

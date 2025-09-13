@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { supabase } from "../integrations/supabase/supabaseClient";
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { apiService } from '../lib/apiService';
+import { useToast } from '../components/ui/use-toast';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,21 +24,33 @@ const Login: React.FC = () => {
     setSuccess('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await apiService.login(email, password);
 
       if (error) {
-        setError(error.message);
+        setError(error);
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error
+        });
       } else {
         setSuccess('Login successful! Redirecting...');
+        toast({
+          title: 'Login Successful',
+          description: 'You have been logged in successfully.'
+        });
         setTimeout(() => {
           navigate('/');
         }, 1000);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }

@@ -77,7 +77,7 @@ export const login = async ({ email, password }: LoginData): Promise<UserProfile
   }
 
   // Check if user profile exists in users table
-  let { data: userData, error: profileError } = await supabase
+  const { data: userData, error: profileError } = await supabase
     .from('users')
     .select('*')
     .eq('id', data.user.id)

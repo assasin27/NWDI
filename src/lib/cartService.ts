@@ -1,6 +1,6 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
 import { ProductVariant } from "./productsData";
 import errorHandler from "./errorHandler";
+import { apiService } from "./apiService";
 
 export interface CartItem {
   id: string;
@@ -22,13 +22,10 @@ export const cartService = {
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing cart database connection...');
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('count')
-        .limit(1);
+      const response = await apiService.testCartConnection();
       
-      if (error) {
-        console.error('Database connection test failed:', error);
+      if (response.error) {
+        console.error('Database connection test failed:', response.error);
         return false;
       }
       
@@ -43,17 +40,14 @@ export const cartService = {
   // Get cart items for a user
   async getCartItems(userId: string): Promise<CartItem[]> {
     try {
-      const { data, error } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('user_id', userId);
+      const response = await apiService.getCartItems(userId);
       
-      if (error) {
-        errorHandler.handleError(error, 'CartService.getCartItems');
+      if (response.error) {
+        errorHandler.handleError(response.error, 'CartService.getCartItems');
         return [];
       }
       
-      return data || [];
+      return response.data || [];
     } catch (error) {
       errorHandler.handleError(error as Error, 'CartService.getCartItems');
       return [];
@@ -61,77 +55,33 @@ export const cartService = {
   },
 
   // Add item to cart
-  async addToCart(userId: string, item: Omit<CartItem, 'user_id' | 'quantity' | 'product_id'>, quantity: number = 1): Promise<boolean> {
+  async addToCart(userId: string, productId: string, quantity: number = 1, variant?: ProductVariant): Promise<{ success: boolean; message: string; item?: CartItem }> {
     try {
-      // Check if item already exists in cart (using the unique variant ID)
-      const { data: existing, error: checkError } = await supabase
-        .from('cart_items')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('product_id', item.id) // Use the unique variant ID for checking
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
-        errorHandler.handleError(checkError, 'CartService.addToCart.check');
-        return false;
-      }
-
-      if (existing) {
-        // Update quantity if item exists
-        const { error } = await supabase
-          .from('cart_items')
-          .update({ quantity: existing.quantity + quantity })
-          .eq('user_id', userId)
-          .eq('product_id', item.id); // Use unique variant ID
-        
-        if (error) {
-          errorHandler.handleError(error, 'CartService.addToCart.update');
-          return false;
-        }
-      } else {
-        // Insert new item
-        const cartItemData = {
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          category: item.category,
-          description: item.description,
-          user_id: userId, 
-          quantity,
-          product_id: item.id, // Store the unique variant ID
-          is_organic: item.is_organic || false,
-          in_stock: item.in_stock || true,
-          selectedVariant: item.selectedVariant // Re-enabled now that column exists
-        };
-        
-        const { error } = await supabase
-          .from('cart_items')
-          .insert([cartItemData]);
-        
-        if (error) {
-          errorHandler.handleError(error, 'CartService.addToCart.insert');
-          return false;
-        }
+      const response = await apiService.addToCart(userId, productId, quantity, variant);
+      
+      if (response.error) {
+        errorHandler.handleError(response.error, 'CartService.addToCart');
+        return { success: false, message: 'Failed to add item to cart' };
       }
       
-      return true;
+      return { 
+        success: true, 
+        message: response.isUpdate ? 'Cart item updated' : 'Item added to cart', 
+        item: response.data 
+      };
     } catch (error) {
       errorHandler.handleError(error as Error, 'CartService.addToCart');
-      return false;
+      return { success: false, message: 'An error occurred while adding to cart' };
     }
   },
 
   // Remove item from cart
-  async removeFromCart(userId: string, itemId: string): Promise<boolean> {
+  async removeFromCart(userId: string, productId: string, variant?: ProductVariant): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', userId)
-        .eq('product_id', itemId); // Use the unique variant ID
+      const response = await apiService.removeFromCart(userId, productId, variant);
       
-      if (error) {
-        errorHandler.handleError(error, 'CartService.removeFromCart');
+      if (response.error) {
+        errorHandler.handleError(response.error, 'CartService.removeFromCart');
         return false;
       }
       
@@ -142,17 +92,13 @@ export const cartService = {
     }
   },
 
-  // Update quantity
-  async updateQuantity(userId: string, itemId: string, quantity: number): Promise<boolean> {
+  // Update item quantity
+  async updateQuantity(userId: string, productId: string, quantity: number, variant?: ProductVariant): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity })
-        .eq('user_id', userId)
-        .eq('product_id', itemId); // Use the unique variant ID
+      const response = await apiService.updateQuantity(userId, productId, quantity, variant);
       
-      if (error) {
-        errorHandler.handleError(error, 'CartService.updateQuantity');
+      if (response.error) {
+        errorHandler.handleError(response.error, 'CartService.updateQuantity');
         return false;
       }
       
@@ -166,13 +112,10 @@ export const cartService = {
   // Clear cart
   async clearCart(userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', userId);
+      const response = await apiService.clearCart(userId);
       
-      if (error) {
-        errorHandler.handleError(error, 'CartService.clearCart');
+      if (response.error) {
+        errorHandler.handleError(response.error, 'CartService.clearCart');
         return false;
       }
       
@@ -182,4 +125,4 @@ export const cartService = {
       return false;
     }
   }
-}; 
+};

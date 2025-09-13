@@ -1,4 +1,4 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
+import { apiService } from "@/lib/apiService";
 
 export interface EmailTemplate {
   subject: string;
@@ -426,20 +426,13 @@ export const emailService = {
   // Log email sent to database
   async logEmailSent(type: string, recipientEmail: string, orderId?: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('email_logs')
-        .insert([{
-          type,
-          recipient_email: recipientEmail,
-          order_id: orderId,
-          sent_at: new Date().toISOString()
-        }]);
-
-      if (error) {
-        console.error('Error logging email:', error);
+      const result = await apiService.logEmailSent(type, recipientEmail, orderId);
+      
+      if (result.error) {
+        console.error('Error logging email:', result.error);
       }
     } catch (error) {
       console.error('Error logging email:', error);
     }
   }
-}; 
+};

@@ -3,8 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
 import NavBar from '../NavBar';
-import { CartProvider } from '../../hooks/useCart';
-import { WishlistProvider } from '../../hooks/useWishlist';
+import { CartProvider, useCart } from '../../hooks/useCart';
+import { WishlistProvider, useWishlist } from '../../hooks/useWishlist';
+import { useSupabaseUser } from '../../lib/useSupabaseUser';
 
 // Mock the hooks
 jest.mock('../../hooks/useCart', () => ({
@@ -109,8 +110,7 @@ describe('NavBar Component', () => {
   });
 
   describe('Authentication States', () => {
-    test('shows user actions when authenticated', () => {
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+    test('shows user actions when authenticated', () => {        (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { id: 'test-user', email: 'test@example.com' },
         loading: false,
       });
@@ -122,11 +122,11 @@ describe('NavBar Component', () => {
     });
 
     test('shows cart and wishlist counts when items exist', () => {
-      vi.mocked(require('../../hooks/useCart').useCart).mockReturnValue({
+      (useCart as jest.MockedFunction<typeof useCart>).mockReturnValue({
         cartItems: [{ id: '1', name: 'Product 1' }],
       });
 
-      vi.mocked(require('../../hooks/useWishlist').useWishlist).mockReturnValue({
+      (useWishlist as jest.MockedFunction<typeof useWishlist>).mockReturnValue({
         wishlistItems: [{ id: '1', name: 'Product 1' }],
       });
 
@@ -156,7 +156,7 @@ describe('NavBar Component', () => {
 
   describe('Security', () => {
     test('does not expose sensitive user information', () => {
-      vi.mocked(require('../../lib/useSupabaseUser').useSupabaseUser).mockReturnValue({
+      (useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>).mockReturnValue({
         user: { 
           id: 'test-user', 
           email: 'test@example.com',

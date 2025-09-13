@@ -13,7 +13,8 @@ import {
   Package,
   Search
 } from 'lucide-react';
-import { supabase } from '../../integrations/supabase/supabaseClient';
+import { apiService } from '../../lib/apiService';
+import { useToast } from '../../components/ui/use-toast';
 
 interface ProductForm {
   name: string;
@@ -62,6 +63,8 @@ const AddProduct: React.FC = () => {
     }
   };
 
+  const { toast } = useToast();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -71,57 +74,52 @@ const AddProduct: React.FC = () => {
       // Validate form
       if (!form.name || !form.price || !form.category) {
         setMessage({ type: 'error', text: 'Please fill in all required fields.' });
-        return;
-      }
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage({ type: 'error', text: 'You must be logged in to add products.' });
-        return;
-      }
-
-      // Get the seller profile for the current user
-      const { data: sellerProfile, error: sellerError } = await supabase
-        .from('seller_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (sellerError || !sellerProfile) {
-        console.error('Error getting seller profile:', sellerError);
-        setMessage({ 
-          type: 'error', 
-          text: 'Seller profile not found. Please complete your seller profile first.' 
+        toast({
+          variant: 'destructive',
+          title: 'Validation Error',
+          description: 'Please fill in all required fields.'
         });
         return;
       }
 
-      // Map form to Supabase payload with correct seller_id from seller_profiles
+      // Check authentication using apiService
+      const { data: user, error: authError } = await apiService.getCurrentUser();
+      if (authError || !user) {
+        setMessage({ type: 'error', text: 'You must be logged in to add products.' });
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'You must be logged in to add products.'
+        });
+        navigate('/farmer/login');
+        return;
+      }
+
+      // Map form data to product data
       const productData = {
         name: form.name,
         description: form.description,
-        category_id: form.category, // Assuming category is stored as UUID
-        price: parseFloat(form.price) * 100, // Convert to cents/pennies for storage
+        category: form.category,
+        price: parseFloat(form.price),
         image_url: form.image,
-        stock_quantity: form.inStock ? 10 : 0, // Default to 10 in stock
-        seller_id: sellerProfile.id, // Use the seller_profile.id, not user.id
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        quantity: form.inStock ? 10 : 0, // Default to 10 in stock
+        min_stock_level: 5,
+        unit: 'kg'
       };
 
-      // Insert into Supabase
-      const { data, error } = await supabase
-        .from('products')
-        .insert([productData])
-        .select() // Important: Return the inserted record to confirm it was created
-        .select();
-
-      if (error) throw error;
+      // Create product using apiService
+      const { data, error } = await apiService.createProduct(productData);
+      
+      if (error) throw new Error(error);
 
       setMessage({ 
         type: 'success', 
         text: 'Product added successfully! It will now appear in the customer portal.' 
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Product added successfully! It will now appear in the customer portal.',
       });
       
       // Reset form
@@ -143,6 +141,12 @@ const AddProduct: React.FC = () => {
       setMessage({ 
         type: 'error', 
         text: 'Failed to add product. Please try again.' 
+      });
+      
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add product. Please try again.',
       });
     } finally {
       setLoading(false);
@@ -317,4 +321,4 @@ const AddProduct: React.FC = () => {
   );
 };
 
-export default AddProduct; 
+export default AddProduct;

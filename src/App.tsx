@@ -16,9 +16,7 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const Orders = React.lazy(() => import('./pages/Orders'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 const CustomerPortal = React.lazy(() => import('./pages/customer/CustomerPortal'));
-const FarmerPortal = React.lazy(() => import('./pages/farmer/FarmerPortal'));
-const FarmerDashboard = React.lazy(() => import('./pages/farmer/FarmerDashboard'));
-const AddProduct = React.lazy(() => import('./pages/farmer/AddProduct'));
+import FarmerPortal from './pages/farmer/FarmerPortal';
 
 // Loading component
 const LoadingSpinner = () => (
@@ -89,11 +87,8 @@ function App() {
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/orders" element={<Orders />} />
-                  <Route path="/customer" element={<CustomerPortal />} />
-                  <Route path="/farmer" element={<FarmerPortal />} />
-                  <Route path="/farmer/login" element={<FarmerPortal />} />
-                  <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-                  <Route path="/farmer/add-product" element={<AddProduct />} />
+                  <Route path="/customer/*" element={<CustomerPortal />} />
+                  <Route path="/farmer/*" element={<FarmerPortal />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </React.Suspense>

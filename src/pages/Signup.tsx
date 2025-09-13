@@ -4,9 +4,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { supabase } from "../integrations/supabase/supabaseClient";
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Eye, EyeOff, Loader2, User, Mail, Lock, Home, MapPin, ArrowLeft, ArrowRight } from 'lucide-react';
+import { apiService } from '../lib/apiService';
+import { useToast } from '../components/ui/use-toast';
 
 interface Address {
   houseBuilding: string;
@@ -19,6 +20,7 @@ interface Address {
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   
   // Account creation states
@@ -53,46 +55,62 @@ const Signup: React.FC = () => {
     // Validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Passwords do not match'
+      });
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters long');
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Password must be at least 6 characters long'
+      });
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name
-          }
-        }
-      });
+      const { data, error } = await apiService.signup(email, password, { name });
 
       if (error) {
-        setError(error.message);
-      } else if (!data.user) {
+        setError(error);
+        toast({
+          variant: 'destructive',
+          title: 'Signup Failed',
+          description: error
+        });
+      } else if (!data) {
         // Email confirmation required
-        setSuccess(
-          "==============================\n" +
-          "Sign up successful!\n" +
-          "To complete authentication, open Gmail (or your email app) and click the confirmation link we sent you.\n" +
-          "You must confirm your email before you can log in.\n" +
-          "=============================="
-        );
+        const successMessage = "Sign up successful! To complete authentication, open your email and click the confirmation link we sent you. You must confirm your email before you can log in.";
+        setSuccess(successMessage);
+        toast({
+          title: 'Signup Successful',
+          description: 'Please check your email to confirm your account.'
+        });
         setStep(1); // Stay on the signup step
       } else {
-        setUser(data.user);
+        setUser(data);
         setSuccess("Account created successfully! Now let's add your delivery address.");
+        toast({
+          title: 'Account Created',
+          description: "Now let's add your delivery address."
+        });
         setStep(2);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -107,26 +125,38 @@ const Signup: React.FC = () => {
     // Validate address fields
     if (!address.houseBuilding || !address.street || !address.city || !address.state || !address.pincode) {
       setError('Please fill in all required address fields');
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Please fill in all required address fields'
+      });
       setLoading(false);
       return;
     }
 
     try {
       // Update user with address information
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          addresses: [{
-            id: Date.now().toString(),
-            ...address,
-            isDefault: true
-          }]
-        }
+      const { error } = await apiService.updateUserProfile({
+        addresses: [{
+          id: Date.now().toString(),
+          ...address,
+          isDefault: true
+        }]
       });
 
       if (error) {
-        setError(error.message);
+        setError(error);
+        toast({
+          variant: 'destructive',
+          title: 'Address Update Failed',
+          description: error
+        });
       } else {
         setSuccess('Account setup complete! Please check your email for verification.');
+        toast({
+          title: 'Setup Complete',
+          description: 'Your account has been created successfully. Please check your email for verification.'
+        });
         setTimeout(() => {
           navigate('/login');
         }, 3000);

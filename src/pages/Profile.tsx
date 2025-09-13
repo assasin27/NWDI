@@ -25,7 +25,8 @@ import {
   Edit
 } from 'lucide-react';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
-import { supabase } from "../integrations/supabase/supabaseClient";
+import { apiService } from '../lib/apiService';
+import { useToast } from '../components/ui/use-toast';
 
 interface Address {
   id: string;
@@ -41,6 +42,7 @@ interface Address {
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: userLoading, signOut } = useSupabaseUser();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -100,20 +102,33 @@ const Profile: React.FC = () => {
     setError('');
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          name: name,
-          addresses: addresses
-        }
+      const { error } = await apiService.updateUserProfile({
+        name: name,
+        addresses: addresses
       });
 
       if (error) {
-        setError(error.message);
+        setError(error);
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error
+        });
       } else {
         setSuccess('Profile updated successfully!');
+        toast({
+          title: 'Success',
+          description: 'Profile updated successfully!'
+        });
       }
     } catch (err) {
-      setError('Failed to update profile');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -204,11 +219,21 @@ const Profile: React.FC = () => {
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       setError('New passwords do not match');
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'New passwords do not match'
+      });
       return;
     }
 
     if (newPassword.length < 6) {
       setError('New password must be at least 6 characters long');
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'New password must be at least 6 characters long'
+      });
       return;
     }
 
@@ -218,31 +243,50 @@ const Profile: React.FC = () => {
 
     try {
       // First verify old password by attempting to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || '',
-        password: oldPassword
-      });
+      const { error: signInError } = await apiService.verifyPassword(
+        user?.email || '',
+        oldPassword
+      );
 
       if (signInError) {
         setError('Current password is incorrect');
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'Current password is incorrect'
+        });
+        setLoading(false);
         return;
       }
 
       // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
+      const { error } = await apiService.updatePassword(newPassword);
 
       if (error) {
-        setError(error.message);
+        setError(error);
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error
+        });
       } else {
         setSuccess('Password updated successfully!');
+        toast({
+          title: 'Success',
+          description: 'Password updated successfully!'
+        });
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
     } catch (err) {
-      setError('Failed to update password');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update password';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }

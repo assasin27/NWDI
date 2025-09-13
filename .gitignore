@@ -1,6 +1,7 @@
 # Ignore environment variables
 .env
 .env.production
+#.mcp.json
 # Logs
 logs
 *.log

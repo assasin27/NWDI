@@ -81,20 +81,43 @@ CREATE POLICY "Sellers can view orders for their products" ON orders
 -- Order Items RLS Policies
 -- Users can view items in their own orders
 CREATE POLICY "Users can view items in their own orders" ON order_items
-    FOR SELECT USING (EXISTS (
-        SELECT 1 FROM orders
-        WHERE orders.id = order_items.order_id
-        AND orders.user_id = auth.uid()::uuid
-    ));
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM orders
+            WHERE orders.id = order_items.order_id
+            AND orders.user_id = auth.uid()
+        )
+    );
 
 -- Sellers can view items for their products
 CREATE POLICY "Sellers can view items for their products" ON order_items
-    FOR SELECT USING (EXISTS (
-        SELECT 1 FROM products
-        JOIN seller_profiles ON products.seller_id = seller_profiles.id
-        WHERE products.id = order_items.product_id
-        AND seller_profiles.user_id = auth.uid()::uuid
-    ));
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM products
+            JOIN seller_profiles ON products.seller_id = seller_profiles.id
+            WHERE products.id = order_items.product_id
+            AND seller_profiles.user_id = auth.uid()
+        )
+    );
+
+-- Sellers can update order status for their products
+CREATE POLICY "Sellers can update order status" ON order_items
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM products
+            JOIN seller_profiles ON products.seller_id = seller_profiles.id
+            WHERE products.id = order_items.product_id
+            AND seller_profiles.user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM products
+            JOIN seller_profiles ON products.seller_id = seller_profiles.id
+            WHERE products.id = order_items.product_id
+            AND seller_profiles.user_id = auth.uid()
+        )
+    );
 
 -- Reviews RLS Policies
 -- Anyone can view reviews

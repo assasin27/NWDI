@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import React from 'react';
 
 export const mockNavigate = vi.fn();
 export const mockUseLocation = vi.fn(() => ({ pathname: '/' }));
@@ -13,26 +14,22 @@ export const mockRouterContext = {
 };
 
 // Mock React Router components
-export const MockRouter = ({ children }: { children: React.ReactNode }) => (
-  <div data-testid="router">{children}</div>
-);
+export const MockRouter = ({ children }: { children: React.ReactNode }) => {
+  return React.createElement('div', { 'data-testid': 'router' }, children);
+};
 
-export const MockRoutes = ({ children }: { children: React.ReactNode }) => (
-  <div data-testid="routes">{children}</div>
-);
+export const MockRoutes = ({ children }: { children: React.ReactNode }) => {
+  return React.createElement('div', { 'data-testid': 'routes' }, children);
+};
 
-export const MockRoute = ({ element }: { element: React.ReactNode }) => (
-  <div data-testid="route">{element}</div>
-);
+export const MockRoute = ({ element }: { element: React.ReactNode }) => {
+  return React.createElement('div', { 'data-testid': 'route' }, element);
+};
 
-export const MockLink = ({ to, children, ...props }: any) => (
-  <a href={to} {...props} data-testid="link">
-    {children}
-  </a>
-);
+export const MockLink = ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => {
+  return React.createElement('a', { href: to, 'data-testid': 'link', ...props }, children);
+};
 
-export const MockNavLink = ({ to, children, ...props }: any) => (
-  <a href={to} {...props} data-testid="nav-link">
-    {children}
-  </a>
-); 
+export const MockNavLink = ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => {
+  return React.createElement('a', { href: to, 'data-testid': 'nav-link', ...props }, children);
+}; 

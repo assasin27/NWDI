@@ -1,9 +1,9 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 
 export const mockNavigate = jest.fn();
 
 export const MockRouter = ({ children }: { children: ReactNode }) => {
-  return <div data-testid="mock-router">{children}</div>;
+  return React.createElement('div', { 'data-testid': 'mock-router' }, children);
 };
 
 export const mockUseNavigate = () => mockNavigate;
@@ -15,8 +15,6 @@ export const mockUseLocation = () => ({
   state: null,
 });
 
-export const mockLink = ({ to, children, ...props }: any) => (
-  <a href={to} {...props}>
-    {children}
-  </a>
-); 
+export const mockLink = ({ to, children, ...props }: { to: string; children: ReactNode; [key: string]: unknown }) => {
+  return React.createElement('a', { href: to, ...props }, children);
+}; 

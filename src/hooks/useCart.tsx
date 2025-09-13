@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { cartService, CartItem } from "../lib/cartService";
 import { useSupabaseUser } from "../lib/useSupabaseUser";
 import { ProductVariant } from "../lib/productsData";
@@ -35,22 +35,11 @@ export const useCart = () => {
   return ctx;
 };
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }): JSX.Element => {
   const [cart, setCart] = useState<UICartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { user, loading: userLoading } = useSupabaseUser();
+  const [loading, setLoading] = useState(false);  const { user, loading: userLoading } = useSupabaseUser();
 
-  // Load cart from database when user changes
-  useEffect(() => {
-    if (user?.id && !userLoading) {
-      loadCart();
-    } else if (!user && !userLoading) {
-      // Clear cart when user logs out
-      setCart([]);
-    }
-  }, [user?.id, userLoading]);
-
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     if (!user?.id) return;
     
     setLoading(true);
@@ -73,43 +62,31 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setCart(uiCartItems);
     } catch (error) {
-      errorHandler.handleError(error as Error, 'useCart.loadCart');
-    } finally {
+      errorHandler.handleError(error as Error, 'useCart.loadCart');    } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
   const addToCart = async (item: Omit<UICartItem, "quantity">): Promise<boolean> => {
     if (!user?.id) {
       errorHandler.handleError('User not authenticated', 'useCart.addToCart');
       return false;
     }
-
+    
     setLoading(true);
     try {
-      // Create a unique ID for the cart item that includes the variant
-      const uniqueCartItemId = item.selectedVariant 
-        ? `${item.id}-${item.selectedVariant.name}` 
-        : item.id;
-
-      const cartItemData = {
-        id: uniqueCartItemId, // Use unique ID for variant-specific items
-        name: item.name,
-        price: item.price,
-        image: item.image,
-        category: item.category,
-        description: item.description,
-        is_organic: item.isOrganic,
-        in_stock: item.inStock,
-        selectedVariant: item.selectedVariant
-      };
-
-      const success = await cartService.addToCart(user.id, cartItemData);
+      // Call cartService.addToCart with the correct parameters
+      const result = await cartService.addToCart(
+        user.id,
+        item.id,
+        1, // Default quantity
+        item.selectedVariant
+      );
       
-      if (success) {
+      if (result.success) {
         await loadCart(); // Reload cart to get updated state
       }
-      return success;
+      return result.success;
     } catch (error) {
       errorHandler.handleError(error as Error, 'useCart.addToCart');
       return false;

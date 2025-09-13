@@ -6,6 +6,14 @@ import { WishlistProvider } from '../../hooks/useWishlist';
 import { NotificationProvider } from '../../contexts/NotificationContext';
 import CartDrawer from '../../components/CartDrawer';
 import Wishlist from '../../pages/Wishlist';
+// Mock the services and hooks
+jest.mock('../../lib/useSupabaseUser');
+jest.mock('../../lib/cartService');
+jest.mock('../../lib/wishlistService');
+
+import { useSupabaseUser } from '../../lib/useSupabaseUser';
+import { cartService } from '../../lib/cartService';
+import { wishlistService } from '../../lib/wishlistService';
 
 // Mock the Supabase client
 jest.mock('../../integrations/supabase/supabaseClient', () => ({
@@ -85,11 +93,9 @@ describe('Clear Cart and Wishlist Functionality', () => {
   const mockUser = {
     id: 'test-user-id',
     email: 'test@example.com'
-  };
-
-  const mockUseSupabaseUser = require('../../lib/useSupabaseUser').useSupabaseUser;
-  const mockCartService = require('../../lib/cartService').cartService;
-  const mockWishlistService = require('../../lib/wishlistService').wishlistService;
+  };  const mockUseSupabaseUser = useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>;
+  const mockCartService = cartService as jest.Mocked<typeof cartService>;
+  const mockWishlistService = wishlistService as jest.Mocked<typeof wishlistService>;
 
   beforeEach(() => {
     jest.clearAllMocks();

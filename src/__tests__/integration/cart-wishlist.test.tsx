@@ -8,6 +8,15 @@ import ProductsSection from '../../components/ProductsSection';
 import CartDrawer from '../../components/CartDrawer';
 import Wishlist from '../../pages/Wishlist';
 
+// Mock the services and hooks
+jest.mock('../../lib/useSupabaseUser');
+jest.mock('../../lib/cartService');
+jest.mock('../../lib/wishlistService');
+
+import { useSupabaseUser } from '../../lib/useSupabaseUser';
+import { cartService } from '../../lib/cartService';
+import { wishlistService } from '../../lib/wishlistService';
+
 // Mock the Supabase client
 jest.mock('../../integrations/supabase/supabaseClient', () => ({
   supabase: {
@@ -88,7 +97,7 @@ describe('Cart and Wishlist Functionality', () => {
     email: 'test@example.com'
   };
 
-  const mockUseSupabaseUser = require('../../lib/useSupabaseUser').useSupabaseUser;
+  const mockUseSupabaseUser = useSupabaseUser as jest.MockedFunction<typeof useSupabaseUser>;
 
   beforeEach(() => {
     // Reset all mocks
@@ -125,7 +134,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should allow adding items when user is authenticated', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.addToCart.mockResolvedValue(true);
       cartService.getCartItems.mockResolvedValue([]);
 
@@ -147,7 +156,7 @@ describe('Cart and Wishlist Functionality', () => {
 
   describe('Cart Functionality Tests', () => {
     test('should add item to cart successfully', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.addToCart.mockResolvedValue(true);
       cartService.getCartItems.mockResolvedValue([
         {
@@ -187,7 +196,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should remove item from cart', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.removeFromCart.mockResolvedValue(true);
       cartService.getCartItems.mockResolvedValue([]);
 
@@ -209,7 +218,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should update item quantity', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.updateQuantity.mockResolvedValue(true);
       cartService.getCartItems.mockResolvedValue([
         {
@@ -249,7 +258,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should clear cart when user logs out', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.clearCart.mockResolvedValue(true);
 
       // Start with authenticated user
@@ -286,8 +295,7 @@ describe('Cart and Wishlist Functionality', () => {
   });
 
   describe('Wishlist Functionality Tests', () => {
-    test('should add item to wishlist successfully', async () => {
-      const { wishlistService } = require('../../lib/wishlistService');
+    test('should add item to wishlist successfully', async () => {        const mockWishlistService = wishlistService as jest.Mocked<typeof wishlistService>;
       wishlistService.addToWishlist.mockResolvedValue(true);
       wishlistService.getWishlistItems.mockResolvedValue([]);
 
@@ -313,7 +321,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should remove item from wishlist', async () => {
-      const { wishlistService } = require('../../lib/wishlistService');
+      const mockWishlistService = wishlistService as jest.Mocked<typeof wishlistService>;
       wishlistService.removeFromWishlist.mockResolvedValue(true);
       wishlistService.getWishlistItems.mockResolvedValue([
         {
@@ -348,7 +356,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should clear wishlist when user logs out', async () => {
-      const { wishlistService } = require('../../lib/wishlistService');
+      const mockWishlistService = wishlistService as jest.Mocked<typeof wishlistService>;
       wishlistService.clearWishlist.mockResolvedValue(true);
 
       // Start with authenticated user
@@ -426,7 +434,7 @@ describe('Cart and Wishlist Functionality', () => {
 
   describe('Error Handling Tests', () => {
     test('should handle database connection errors gracefully', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.addToCart.mockRejectedValue(new Error('Database connection failed'));
 
       render(
@@ -446,7 +454,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should handle authentication errors', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.addToCart.mockRejectedValue(new Error('User not authenticated'));
 
       render(
@@ -468,7 +476,7 @@ describe('Cart and Wishlist Functionality', () => {
 
   describe('UI State Tests', () => {
     test('should show loading state while adding items', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.addToCart.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(true), 100)));
 
       render(
@@ -486,7 +494,7 @@ describe('Cart and Wishlist Functionality', () => {
     });
 
     test('should update cart count in navbar', async () => {
-      const { cartService } = require('../../lib/cartService');
+      const mockCartService = cartService as jest.Mocked<typeof cartService>;
       cartService.getCartItems.mockResolvedValue([
         {
           id: '1',

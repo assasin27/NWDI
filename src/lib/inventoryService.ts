@@ -1,4 +1,4 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
+import { apiService } from "@/lib/apiService";
 
 export interface InventoryItem {
   id: string;
@@ -37,146 +37,90 @@ const isTableNotFoundError = (error: { code?: string; message?: string }): boole
 export const inventoryService = {
   // Get all inventory items
   async getInventoryItems(): Promise<InventoryItem[]> {
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('last_updated', { ascending: false });
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Inventory table does not exist yet. Returning empty array.');
-          return [];
-        }
-        console.error('Error fetching inventory items:', error);
+    const response = await apiService.getInventoryItems();
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Inventory table does not exist yet. Returning empty array.');
         return [];
       }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching inventory items:', error);
+      console.error('Error fetching inventory items:', response.error);
       return [];
     }
+    return response.data || [];
   },
 
   // Get inventory item by product ID
   async getInventoryItem(productId: string): Promise<InventoryItem | null> {
-    try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .eq('product_id', productId)
-        .single();
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Inventory table does not exist yet.');
-          return null;
-        }
-        console.error('Error fetching inventory item:', error);
+    const response = await apiService.getInventoryItem(productId);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Inventory table does not exist yet.');
         return null;
       }
-
-      return data;
-    } catch (error) {
-      console.error('Error fetching inventory item:', error);
+      console.error('Error fetching inventory item:', response.error);
       return null;
     }
+    return response.data;
   },
 
   // Update stock quantity
   async updateStock(productId: string, quantity: number, operation: 'add' | 'subtract'): Promise<boolean> {
-    try {
-      // Get current inventory item
-      const currentItem = await this.getInventoryItem(productId);
-      if (!currentItem) {
-        console.error('Inventory item not found for product:', productId);
-        return false;
-      }
-
-      let newStock = currentItem.current_stock;
-      if (operation === 'add') {
-        newStock += quantity;
-      } else if (operation === 'subtract') {
-        newStock = Math.max(0, newStock - quantity);
-      }
-
-      // Update inventory
-      const { error } = await supabase
-        .from('inventory')
-        .update({
-          current_stock: newStock,
-          last_updated: new Date().toISOString()
-        })
-        .eq('product_id', productId);
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Inventory table does not exist yet. Cannot update stock.');
-          return false;
-        }
-        console.error('Error updating stock:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error updating stock:', error);
+    // Get current inventory item
+    const currentItem = await this.getInventoryItem(productId);
+    if (!currentItem) {
+      console.error('Inventory item not found for product:', productId);
       return false;
     }
+
+    let newStock = currentItem.current_stock;
+    if (operation === 'add') {
+      newStock += quantity;
+    } else if (operation === 'subtract') {
+      newStock = Math.max(0, newStock - quantity);
+    }
+
+    // Update inventory
+    const response = await apiService.updateInventoryStock(productId, newStock);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Inventory table does not exist yet. Cannot update stock.');
+        return false;
+      }
+      console.error('Error updating stock:', response.error);
+      return false;
+    }
+
+    return true;
   },
 
   // Add new inventory item
   async addInventoryItem(item: Omit<InventoryItem, 'id' | 'last_updated'>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('inventory')
-        .insert({
-          ...item,
-          last_updated: new Date().toISOString()
-        });
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Inventory table does not exist yet. Cannot add item.');
-          return false;
-        }
-        console.error('Error adding inventory item:', error);
+    const response = await apiService.addInventoryItem(item);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Inventory table does not exist yet. Cannot add item.');
         return false;
       }
-
-      return true;
-    } catch (error) {
-      console.error('Error adding inventory item:', error);
+      console.error('Error adding inventory item:', response.error);
       return false;
     }
+
+    return true;
   },
 
   // Update inventory item
   async updateInventoryItem(productId: string, updates: Partial<InventoryItem>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('inventory')
-        .update({
-          ...updates,
-          last_updated: new Date().toISOString()
-        })
-        .eq('product_id', productId);
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Inventory table does not exist yet. Cannot update item.');
-          return false;
-        }
-        console.error('Error updating inventory item:', error);
+    const response = await apiService.updateInventoryItem(productId, updates);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Inventory table does not exist yet. Cannot update item.');
         return false;
       }
-
-      return true;
-    } catch (error) {
-      console.error('Error updating inventory item:', error);
+      console.error('Error updating inventory item:', response.error);
       return false;
     }
+
+    return true;
   },
 
   // Check and create stock alerts
@@ -205,82 +149,47 @@ export const inventoryService = {
 
   // Create stock alert
   async createStockAlert(alert: Omit<StockAlert, 'id' | 'created_at'>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('stock_alerts')
-        .insert({
-          ...alert,
-          created_at: new Date().toISOString()
-        });
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Stock alerts table does not exist yet. Cannot create alert.');
-          return false;
-        }
-        console.error('Error creating stock alert:', error);
+    const response = await apiService.createStockAlert(alert);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Stock alerts table does not exist yet. Cannot create alert.');
         return false;
       }
-
-      return true;
-    } catch (error) {
-      console.error('Error creating stock alert:', error);
+      console.error('Error creating stock alert:', response.error);
       return false;
     }
+
+    return true;
   },
 
   // Get stock alerts
   async getStockAlerts(resolved?: boolean): Promise<StockAlert[]> {
-    try {
-      let query = supabase
-        .from('stock_alerts')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (resolved !== undefined) {
-        query = query.eq('is_resolved', resolved);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Stock alerts table does not exist yet. Returning empty array.');
-          return [];
-        }
-        console.error('Error fetching stock alerts:', error);
+    const response = await apiService.getStockAlerts(resolved);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Stock alerts table does not exist yet. Returning empty array.');
         return [];
       }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching stock alerts:', error);
+      console.error('Error fetching stock alerts:', response.error);
       return [];
     }
+
+    return response.data || [];
   },
 
   // Resolve stock alert
   async resolveStockAlert(alertId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('stock_alerts')
-        .update({ is_resolved: true })
-        .eq('id', alertId);
-
-      if (error) {
-        if (isTableNotFoundError(error)) {
-          console.log('Stock alerts table does not exist yet. Cannot resolve alert.');
-          return false;
-        }
-        console.error('Error resolving stock alert:', error);
+    const response = await apiService.resolveStockAlert(alertId);
+    if (response.error) {
+      if (isTableNotFoundError(response.error)) {
+        console.log('Stock alerts table does not exist yet. Cannot resolve alert.');
         return false;
       }
-
-      return true;
-    } catch (error) {
-      console.error('Error resolving stock alert:', error);
+      console.error('Error resolving stock alert:', response.error);
       return false;
     }
+
+    return true;
   },
 
   // Get low stock items
@@ -423,4 +332,4 @@ export const inventoryService = {
       return 'Failed to export inventory report';
     }
   }
-}; 
+};

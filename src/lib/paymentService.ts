@@ -1,4 +1,4 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
+import { apiService } from "./apiService";
 
 export interface PaymentIntent {
   id: string;
@@ -114,17 +114,10 @@ export const paymentService = {
   // Update order payment status
   async updateOrderPaymentStatus(orderId: string, paymentId: string, status: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          payment_id: paymentId,
-          payment_status: status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      const response = await apiService.updateOrderPaymentStatus(orderId, paymentId, status);
 
-      if (error) {
-        console.error('Error updating order payment status:', error);
+      if (response.error) {
+        console.error('Error updating order payment status:', response.error);
         return false;
       }
 
@@ -138,17 +131,14 @@ export const paymentService = {
   // Get payment methods for user
   async getPaymentMethods(userId: string): Promise<PaymentMethod[]> {
     try {
-      const { data, error } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('user_id', userId);
+      const response = await apiService.getPaymentMethods(userId);
 
-      if (error) {
-        console.error('Error fetching payment methods:', error);
+      if (response.error) {
+        console.error('Error fetching payment methods:', response.error);
         return [];
       }
 
-      return data || [];
+      return response.data || [];
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       return [];
@@ -158,20 +148,10 @@ export const paymentService = {
   // Save payment method
   async savePaymentMethod(userId: string, paymentMethod: PaymentMethod): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('payment_methods')
-        .insert([{
-          user_id: userId,
-          payment_method_id: paymentMethod.id,
-          type: paymentMethod.type,
-          card_brand: paymentMethod.card?.brand,
-          card_last4: paymentMethod.card?.last4,
-          card_exp_month: paymentMethod.card?.exp_month,
-          card_exp_year: paymentMethod.card?.exp_year
-        }]);
+      const response = await apiService.savePaymentMethod(userId, paymentMethod);
 
-      if (error) {
-        console.error('Error saving payment method:', error);
+      if (response.error) {
+        console.error('Error saving payment method:', response.error);
         return false;
       }
 
@@ -208,4 +188,4 @@ export const paymentService = {
       return false;
     }
   }
-}; 
+};

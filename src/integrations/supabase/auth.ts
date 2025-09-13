@@ -1,4 +1,6 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '../../lib/supabase';
+
+// Types for database tables
 
 type SignUpData = {
   email: string;
@@ -77,7 +79,7 @@ export const login = async ({ email, password }: LoginData): Promise<UserProfile
   }
 
   // Check if user profile exists in users table
-  const { data: userData, error: profileError } = await supabase
+  let { data: userProfile, error: profileError } = await supabase
     .from('users')
     .select('*')
     .eq('id', data.user.id)
@@ -102,17 +104,21 @@ export const login = async ({ email, password }: LoginData): Promise<UserProfile
       .eq('id', data.user.id)
       .single();
     if (fetchError) throw fetchError;
-    userData = newUser;
+    userProfile = newUser;
   } else if (profileError) {
     throw profileError;
   }
 
+  if (!userProfile) {
+    throw new Error('Failed to fetch user profile');
+  }
+
   return {
-    id: userData.id,
-    email: userData.email,
-    firstName: userData.first_name,
-    lastName: userData.last_name,
-    isSeller: userData.is_seller,
+    id: userProfile.id,
+    email: userProfile.email,
+    firstName: userProfile.first_name,
+    lastName: userProfile.last_name,
+    isSeller: userProfile.is_seller,
   };
 };
 

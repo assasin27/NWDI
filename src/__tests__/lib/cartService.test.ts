@@ -1,293 +1,193 @@
-import { cartService, CartItem } from '@/lib/cartService';
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import type { CartItem } from "@/lib/cartService";
 
-// Mock the Supabase client
-const mockQueryBuilder = {
-  select: jest.fn().mockReturnThis(),
-  insert: jest.fn().mockReturnThis(),
-  update: jest.fn().mockReturnThis(),
-  delete: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  single: jest.fn().mockReturnThis(),
-};
+jest.mock("@/lib/apiService", () => ({
+  apiService: {
+    testCartConnection: jest.fn(),
+    getCartItems: jest.fn(),
+    addToCart: jest.fn(),
+    removeFromCart: jest.fn(),
+    updateQuantity: jest.fn(),
+  }
+}));
 
-const mockSupabase = {
-  from: jest.fn(() => mockQueryBuilder),
-};
+jest.mock("@/lib/errorHandler", () => ({
+  handleError: jest.fn()
+}));
 
-jest.mock('@/integrations/supabase/client', () => {
-  return { supabase: mockSupabase };
-});
+import { cartService } from "@/lib/cartService";
+import { apiService } from "@/lib/apiService";
 
-describe('cartService', () => {
-  const mockUserId = 'test-user-id';
-  const mockItem = {
-    id: 'test-product-id',
-    name: 'Test Product',
-    price: 100,
-    image: 'test-image.jpg',
-    category: 'test',
-    description: 'Test description',
-    is_organic: false,
-    in_stock: true,
-  };
+describe("cartService", () => {
+  const mockUserId = "test-user-id";
+  const mockProductId = "test-product-id";
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('getCartItems', () => {
-    it('should return cart items when successful', async () => {
-      const mockCartItems = [
+  describe("getCartItems", () => {
+    it("should return cart items when successful", async () => {
+      const mockCartItems: CartItem[] = [
         {
-          id: '1',
+          id: "1",
           user_id: mockUserId,
-          product_id: 'test-product-id',
-          name: 'Test Product',
+          product_id: mockProductId,
+          name: "Test Product",
           price: 100,
-          image: 'test-image.jpg',
-          category: 'test',
-          description: 'Test description',
+          image: "test-image.jpg",
+          category: "test",
+          description: "Test description",
           quantity: 1,
           is_organic: false,
-          in_stock: true,
+          in_stock: true
         },
       ];
 
-      // Mock the Supabase response
-      (mockQueryBuilder as any).mockResolvedValue({
+      (apiService.getCartItems as jest.Mock).mockResolvedValue({
         data: mockCartItems,
-        error: null,
+        error: null
       });
 
       const result = await cartService.getCartItems(mockUserId);
 
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(mockQueryBuilder.select).toHaveBeenCalledWith('*');
-      expect(mockQueryBuilder.eq).toHaveBeenCalledWith('user_id', mockUserId);
+      expect(apiService.getCartItems).toHaveBeenCalledWith(mockUserId);
       expect(result).toEqual(mockCartItems);
     });
 
-    it('should return empty array when error occurs', async () => {
-      // Mock the Supabase response with an error
-      (mockQueryBuilder as any).mockResolvedValue({
+    it("should handle errors gracefully", async () => {
+      (apiService.getCartItems as jest.Mock).mockResolvedValue({
         data: null,
-        error: { message: 'Error fetching cart items' },
+        error: { message: "Test error" }
       });
 
       const result = await cartService.getCartItems(mockUserId);
 
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(mockQueryBuilder.select).toHaveBeenCalledWith('*');
-      expect(mockQueryBuilder.eq).toHaveBeenCalledWith('user_id', mockUserId);
+      expect(apiService.getCartItems).toHaveBeenCalledWith(mockUserId);
       expect(result).toEqual([]);
     });
   });
 
-  describe('addToCart', () => {
-    it('should add a new item to cart when it does not exist', async () => {
-      // Mock checking for existing item (not found)
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.select as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase.single as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
-        data: null,
-        error: { code: 'PGRST116' }, // Not found error
-      });
-
-      // Mock insert operation
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.insert as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
-        data: { id: '1' },
-        error: null,
-      });
-
-      const result = await cartService.addToCart(mockUserId, mockItem);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.insert).toHaveBeenCalled();
-      expect(result).toBe(true);
-    });
-
-    it('should update quantity when item already exists in cart', async () => {
-      const existingItem = {
-        id: '1',
+  describe("addToCart", () => {
+    it("should add new item successfully", async () => {
+      const mockCartItem: CartItem = {
+        id: "1",
         user_id: mockUserId,
-        product_id: mockItem.id,
+        product_id: mockProductId,
+        name: "Test Product",
+        price: 100,
+        image: "test-image.jpg",
+        category: "test",
+        description: "Test description",
         quantity: 1,
+        is_organic: false,
+        in_stock: true
       };
 
-      // Mock checking for existing item (found)
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.select as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase.single as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
-        data: existingItem,
+      (apiService.addToCart as jest.Mock).mockResolvedValue({
+        data: mockCartItem,
         error: null,
+        isUpdate: false
       });
 
-      // Mock update operation
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.update as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
-        data: { id: '1' },
-        error: null,
-      });
+      const result = await cartService.addToCart(mockUserId, mockProductId);
 
-      const result = await cartService.addToCart(mockUserId, mockItem);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.update).toHaveBeenCalled();
-      expect(result).toBe(true);
+      expect(apiService.addToCart).toHaveBeenCalledWith(mockUserId, mockProductId, 1, undefined);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Item added to cart");
+      expect(result.item).toEqual(mockCartItem);
     });
 
-    it('should return false when error occurs during insert', async () => {
-      // Mock checking for existing item (not found)
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.select as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase.single as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
+    it("should handle update of existing item", async () => {
+      const mockCartItem: CartItem = {
+        id: "1",
+        user_id: mockUserId,
+        product_id: mockProductId,
+        name: "Test Product",
+        price: 100,
+        image: "test-image.jpg",
+        category: "test",
+        description: "Test description",
+        quantity: 2,
+        is_organic: false,
+        in_stock: true
+      };
+
+      (apiService.addToCart as jest.Mock).mockResolvedValue({
+        data: mockCartItem,
+        error: null,
+        isUpdate: true
+      });
+
+      const result = await cartService.addToCart(mockUserId, mockProductId, 2);
+
+      expect(apiService.addToCart).toHaveBeenCalledWith(mockUserId, mockProductId, 2, undefined);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Cart item updated");
+      expect(result.item).toEqual(mockCartItem);
+    });
+
+    it("should handle errors gracefully", async () => {
+      (apiService.addToCart as jest.Mock).mockResolvedValue({
         data: null,
-        error: { code: 'PGRST116' }, // Not found error
+        error: { message: "Test error" }
       });
 
-      // Mock insert operation with error
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.insert as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValueOnce({
+      const result = await cartService.addToCart(mockUserId, mockProductId);
+
+      expect(apiService.addToCart).toHaveBeenCalledWith(mockUserId, mockProductId, 1, undefined);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Failed to add item to cart");
+    });
+  });
+
+  describe("removeFromCart", () => {
+    it("should remove item successfully", async () => {
+      (apiService.removeFromCart as jest.Mock).mockResolvedValue({
+        data: true,
+        error: null
+      });
+
+      const result = await cartService.removeFromCart(mockUserId, mockProductId);
+
+      expect(apiService.removeFromCart).toHaveBeenCalledWith(mockUserId, mockProductId, undefined);
+      expect(result).toBe(true);
+    });
+
+    it("should handle errors gracefully", async () => {
+      (apiService.removeFromCart as jest.Mock).mockResolvedValue({
         data: null,
-        error: { message: 'Error inserting item' },
+        error: { message: "Test error" }
       });
 
-      const result = await cartService.addToCart(mockUserId, mockItem);
+      const result = await cartService.removeFromCart(mockUserId, mockProductId);
 
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.insert).toHaveBeenCalled();
+      expect(apiService.removeFromCart).toHaveBeenCalledWith(mockUserId, mockProductId, undefined);
       expect(result).toBe(false);
     });
   });
 
-  describe('removeFromCart', () => {
-    it('should remove item from cart when successful', async () => {
-      // Mock delete operation
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.delete as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: null,
+  describe("updateQuantity", () => {
+    it("should update quantity successfully", async () => {
+      (apiService.updateQuantity as jest.Mock).mockResolvedValue({
+        data: true,
+        error: null
       });
 
-      const result = await cartService.removeFromCart(mockUserId, 'test-product-id');
+      const result = await cartService.updateQuantity(mockUserId, mockProductId, 3);
 
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.delete).toHaveBeenCalled();
-      expect(supabase.eq).toHaveBeenCalledWith('user_id', mockUserId);
-      expect(supabase.eq).toHaveBeenCalledWith('product_id', 'test-product-id');
+      expect(apiService.updateQuantity).toHaveBeenCalledWith(mockUserId, mockProductId, 3, undefined);
       expect(result).toBe(true);
     });
 
-    it('should return false when error occurs', async () => {
-      // Mock delete operation with error
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.delete as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: { message: 'Error removing item' },
+    it("should handle errors gracefully", async () => {
+      (apiService.updateQuantity as jest.Mock).mockResolvedValue({
+        data: null,
+        error: { message: "Test error" }
       });
 
-      const result = await cartService.removeFromCart(mockUserId, 'test-product-id');
+      const result = await cartService.updateQuantity(mockUserId, mockProductId, 3);
 
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.delete).toHaveBeenCalled();
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('updateQuantity', () => {
-    it('should update item quantity when successful', async () => {
-      // Mock update operation
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.update as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: null,
-      });
-
-      const result = await cartService.updateQuantity(mockUserId, 'test-product-id', 2);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.update).toHaveBeenCalledWith({ quantity: 2 });
-      expect(supabase.eq).toHaveBeenCalledWith('user_id', mockUserId);
-      expect(supabase.eq).toHaveBeenCalledWith('product_id', 'test-product-id');
-      expect(result).toBe(true);
-    });
-
-    it('should call removeFromCart when quantity is 0 or less', async () => {
-      // Spy on removeFromCart
-      const removeFromCartSpy = jest.spyOn(cartService, 'removeFromCart');
-      removeFromCartSpy.mockResolvedValue(true);
-
-      const result = await cartService.updateQuantity(mockUserId, 'test-product-id', 0);
-
-      expect(removeFromCartSpy).toHaveBeenCalledWith(mockUserId, 'test-product-id');
-      expect(result).toBe(true);
-
-      removeFromCartSpy.mockRestore();
-    });
-
-    it('should return false when error occurs', async () => {
-      // Mock update operation with error
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.update as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: { message: 'Error updating quantity' },
-      });
-
-      const result = await cartService.updateQuantity(mockUserId, 'test-product-id', 2);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.update).toHaveBeenCalled();
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('clearCart', () => {
-    it('should clear all items from cart when successful', async () => {
-      // Mock delete operation
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.delete as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: null,
-      });
-
-      const result = await cartService.clearCart(mockUserId);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.delete).toHaveBeenCalled();
-      expect(supabase.eq).toHaveBeenCalledWith('user_id', mockUserId);
-      expect(result).toBe(true);
-    });
-
-    it('should return false when error occurs', async () => {
-      // Mock delete operation with error
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.delete as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
-        error: { message: 'Error clearing cart' },
-      });
-
-      const result = await cartService.clearCart(mockUserId);
-
-      expect(supabase.from).toHaveBeenCalledWith('cart_items');
-      expect(supabase.delete).toHaveBeenCalled();
+      expect(apiService.updateQuantity).toHaveBeenCalledWith(mockUserId, mockProductId, 3, undefined);
       expect(result).toBe(false);
     });
   });

@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { handleApiError, ApiError } from './apiError';
 import { UserRole } from '@/types/auth';
 

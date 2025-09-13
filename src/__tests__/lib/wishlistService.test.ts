@@ -1,18 +1,12 @@
 import { wishlistService, WishlistItem } from '@/lib/wishlistService';
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
+import { createMockSupabaseClient, createMockQueryResult } from '../helpers/mockSupabase';
+
+const mockSupabase = createMockSupabaseClient();
 
 // Mock the Supabase client
-jest.mock('@/integrations/supabase/client', () => {
-  const mockQueryBuilder = {
-    select: jest.fn().mockReturnThis(),
-    insert: jest.fn().mockReturnThis(),
-    delete: jest.fn().mockReturnThis(),
-    eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockReturnThis(),
-  };
-  
-  const mockSupabase = {
-    from: jest.fn(() => mockQueryBuilder),
+jest.mock('@/lib/supabase', () => ({
+  supabase: mockSupabase,
   };
   
   return { supabase: mockSupabase };
@@ -53,10 +47,10 @@ describe('wishlistService', () => {
       ];
 
       // Mock the Supabase response
-      (supabase.from as jest.Mock).mockReturnThis();
-      (supabase.select as jest.Mock).mockReturnThis();
-      (supabase.eq as jest.Mock).mockReturnThis();
-      (supabase as any).mockResolvedValue({
+      const fromMock = supabase.from as jest.Mock;
+      fromMock('wishlist').select('*').eq('user_id', mockUserId).mockResolvedValue({
+        data: mockWishlistItems,
+        error: null,
         data: mockWishlistItems,
         error: null,
       });

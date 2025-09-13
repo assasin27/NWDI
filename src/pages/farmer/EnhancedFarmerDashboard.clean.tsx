@@ -38,7 +38,7 @@ import { ApiService } from '@/lib/apiService';
 import { formatCurrency, formatDate, formatNumber } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // Types
 type TimeRange = '24h' | '7days' | '30days' | '90days' | 'all';

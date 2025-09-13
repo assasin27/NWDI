@@ -1,5 +1,5 @@
 import { cartService } from '../cartService';
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // Mock Supabase
 jest.mock('@/integrations/supabase/client', () => ({

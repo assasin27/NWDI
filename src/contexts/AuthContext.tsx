@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Session, User, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { UserRole, UserProfile, AuthSession } from '@/types/auth';
 
 // Default user profile for unauthenticated users
@@ -59,14 +59,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Fetch user profile from the database
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // First try to fetch from farmer_profiles
+      let { data: farmerProfile, error: farmerError } = await supabase
+        .from('farmer_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (farmerProfile) {
+        return {
+          id: farmerProfile.id,
+          user_id: farmerProfile.user_id,
+          full_name: farmerProfile.name || '',
+          email: farmerProfile.email,
+          role: 'farmer' as UserRole,
+          created_at: farmerProfile.created_at,
+          updated_at: farmerProfile.updated_at,
+        };
+      }
+
+      // If not a farmer, try regular profiles
+      const { data: userProfile, error: userError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (error) throw error;
-      return data as UserProfile;
+      if (userError) throw userError;
+      return userProfile as UserProfile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;
@@ -76,7 +96,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Update the auth state
   const updateAuthState = useCallback(async (session: Session | null) => {
     try {
+      console.log('Updating auth state with session:', session?.user?.id);
+      
       if (!session?.user) {
+        console.log('No session or user, setting guest state');
         setState({
           user: null,
           profile: null,
@@ -89,6 +112,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
+      console.log('Checking for farmer profile');
+      // First check for farmer profile
+      const { data: farmerProfile, error: farmerError } = await supabase
+        .from('farmer_profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (farmerError) {
+        console.error('Error fetching farmer profile:', farmerError);
+        throw farmerError;
+      }
+
+      console.log('Farmer profile found:', farmerProfile);
+
+      if (farmerProfile) {
+        const profile = {
+          id: farmerProfile.id,
+          user_id: farmerProfile.user_id,
+          full_name: farmerProfile.farm_name || '',
+          email: farmerProfile.email,
+          role: 'farmer' as UserRole,
+          created_at: farmerProfile.created_at,
+          updated_at: farmerProfile.updated_at,
+        };
+        console.log('Setting farmer state with profile:', profile);
+        setState({
+          user: session.user,
+          profile,
+          session,
+          loading: false,
+          error: null,
+          isAuthenticated: true,
+          role: 'farmer',
+        });
+        return;
+      }
+
+      console.log('No farmer profile found, checking regular profile');
+      // If not a farmer, get regular profile
       const profile = await fetchUserProfile(session.user.id) || {
         ...DEFAULT_USER_PROFILE,
         user_id: session.user.id,
@@ -108,25 +171,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Error updating auth state:', error);
       setState(prev => ({
         ...prev,
+        user: session?.user || null,
+        profile: null,
+        session: session,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to update auth state',
+        isAuthenticated: false,
+        role: 'guest',
       }));
     }
   }, [fetchUserProfile]);
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        await updateAuthState(session);
+        if (mounted) {
+          await updateAuthState(session);
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Failed to initialize authentication',
-        }));
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Failed to initialize authentication',
+          }));
+        }
       }
     };
 
@@ -135,11 +209,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        await updateAuthState(session);
+        if (event === 'SIGNED_OUT') {
+          if (mounted) {
+            setState({
+              user: null,
+              profile: null,
+              session: null,
+              loading: false,
+              error: null,
+              isAuthenticated: false,
+              role: 'guest',
+            });
+          }
+        } else if (mounted) {
+          await updateAuthState(session);
+        }
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [updateAuthState]);
@@ -185,19 +274,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Failed to create user');
 
-      // Create user profile
-      const profile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'> = {
+      // Create farmer profile
+      const farmerProfile = {
         user_id: data.user.id,
         email,
-        full_name: userData.full_name || '',
-        phone: userData.phone || '',
-        address: userData.address || '',
-        role: 'farmer', // Default role for new users
+        name: userData.full_name || '',
       };
 
       const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([profile]);
+        .from('farmer_profiles')
+        .insert([farmerProfile]);
 
       if (profileError) throw profileError;
 

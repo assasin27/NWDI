@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/hooks/useCart";
-import { supabase } from "@/integrations/supabase/supabaseClient";
+import { supabase } from "@/lib/supabase";
 
 interface HeaderProps {
   onCartClick?: () => void;

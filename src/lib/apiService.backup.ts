@@ -1,5 +1,5 @@
 // API Service for Supabase
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // For production monitoring
 let performanceMetrics: {

@@ -1,5 +1,5 @@
 // API Service for Supabase
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // For production monitoring
 let performanceMetrics: {
@@ -182,6 +182,42 @@ export class ApiService {
       status: 200,
       success: true
     };
+  }
+
+  // Get current user role
+  async getCurrentUserRole(): Promise<ApiResponse<string>> {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw authError || new Error('No user found');
+      }
+
+      // Try farmer_profiles first
+      const { data: farmerProfile, error: farmerError } = await supabase
+        .from('farmer_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (farmerProfile) {
+        return this.handleResponse({ data: 'farmer' });
+      }
+
+      // If not a farmer, check regular profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      return this.handleResponse({ data: profile?.role || 'guest' });
+    } catch (error) {
+      return this.handleResponse({ error });
+    }
   }
 
   // Get order IDs for a specific seller
@@ -433,11 +469,11 @@ export class ApiService {
     }
   }
 
-  // Wishlist methods - using 'wishlist_items' table
+  // Wishlist methods - using 'wishlist' table
   async testWishlistConnection(): Promise<{ error?: string }> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('*')
         .limit(1);
       
@@ -452,7 +488,7 @@ export class ApiService {
   async getWishlistItems(userId: string): Promise<{ data?: any[]; error?: string }> {
     try {
       const { data, error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('*')
         .eq('user_id', userId);
       
@@ -467,7 +503,7 @@ export class ApiService {
   async addToWishlist(userId: string, item: any): Promise<{ error?: string }> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .insert([{ ...item, user_id: userId }]);
       
       if (error) throw error;
@@ -481,7 +517,7 @@ export class ApiService {
   async removeFromWishlist(userId: string, itemId: string): Promise<{ error?: string }> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .delete()
         .eq('id', itemId)
         .eq('user_id', userId);
@@ -497,7 +533,7 @@ export class ApiService {
   async clearWishlist(userId: string): Promise<{ error?: string }> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .delete()
         .eq('user_id', userId);
       

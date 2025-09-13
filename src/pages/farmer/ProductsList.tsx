@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Input } from '../../components/ui/input';
 import { Plus, Edit, Trash2, Loader2, Search, Package } from 'lucide-react';
 import { useToast } from '../../components/ui/use-toast';
-import { productService } from '../../services/productService';
+import { productService } from '../../services';
 import { useAuth } from '../../contexts';
 import { Product } from '../../types/product';
 

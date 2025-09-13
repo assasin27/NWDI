@@ -4,7 +4,7 @@ import { ShoppingCart, Heart, User, Home, List, LogOut, LayoutDashboard, X, Menu
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/supabaseClient";
+import { supabase } from "@/lib/supabase";
 
 export default function AppHeader({ onCartClick }: { onCartClick?: () => void }) {
   const { cart } = useCart();

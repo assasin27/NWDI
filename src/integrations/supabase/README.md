@@ -1,10 +1,18 @@
 # Supabase Integration
 
-This directory contains the Supabase client and services for the Nareshwadi Products e-commerce platform.
+This directory contains Supabase-related code for the Nareshwadi Products e-commerce platform.
+
+## Important Note
+
+The main Supabase client initialization has been moved to `src/lib/supabase.ts` and should be imported from there:
+
+```typescript
+import { supabase } from '../../lib/supabase';
+```
+
+This ensures consistent usage of environment variables across the application.
 
 ## Files
-
-- `client.ts`: The main Supabase client configuration
 - `types.ts`: TypeScript types for the database schema
 - `auth.ts`: Authentication service (sign up, login, logout, etc.)
 - `database.ts`: Database operations (products, orders, reviews, etc.)

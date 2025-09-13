@@ -1,4 +1,4 @@
--- Database Schema for FarmFresh Dual-Portal System
+  -- Database Schema for FarmFresh Dual-Portal System
 
 -- Enable Row Level Security
 ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;

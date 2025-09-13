@@ -2,17 +2,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Login from '@/pages/Login';
 import ProductsSection from '@/components/ProductsSection';
-import ProductCard from '@/components/ProductCard';
-import { supabase } from '@/integrations/supabase/supabaseClient';
+import { ProductCard } from '@/components/ProductCard';
+import { supabase } from '@/lib/supabase';
+import { createMockSupabaseClient } from '../helpers/mockSupabase';
+
+const mockSupabase = createMockSupabaseClient();
 
 // Mock Supabase client
-jest.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: {
-      signInWithPassword: jest.fn(),
-      signUp: jest.fn(),
-      signOut: jest.fn(),
-      getSession: jest.fn(),
+jest.mock('@/lib/supabase', () => ({
+  supabase: mockSupabase,
     },
     from: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),

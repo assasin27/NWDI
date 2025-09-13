@@ -1,4 +1,6 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '../../lib/supabase';
+
+// File storage operations for products, avatars, etc.
 
 const BUCKET_NAME = 'nareshwadi-products';
 

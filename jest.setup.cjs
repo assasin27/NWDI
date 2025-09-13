@@ -165,21 +165,12 @@ const mockSupabase = {
   },
 };
 
-// Mock the supabaseClient module
-jest.mock('@/integrations/supabase/supabaseClient', () => ({
+// Mock the supabase module
+jest.mock('@/lib/supabase', () => ({
   supabase: mockSupabase,
 }));
 
-// Mock the cartService
-jest.mock('@/lib/cartService', () => ({
-  cartService: {
-    addToCart: jest.fn(),
-    removeFromCart: jest.fn(),
-    getCartItems: jest.fn(),
-    updateQuantity: jest.fn(),
-    clearCart: jest.fn(),
-  },
-}));
+// Mock apiService is done in individual test files
 
 // Mock the wishlistService
 jest.mock('@/lib/wishlistService', () => ({

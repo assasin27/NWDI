@@ -5,7 +5,7 @@ import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
 import { useNotification } from '../contexts/NotificationContext';
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';

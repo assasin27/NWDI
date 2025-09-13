@@ -1,4 +1,4 @@
-import { supabase } from "../integrations/supabase/supabaseClient";
+import { supabase } from "@/lib/supabase";
 
 export const databaseSetup = {
   // Check if tables exist and create them if they don't

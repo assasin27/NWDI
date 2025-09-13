@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '../../lib/supabase';
 
 // Note: Generated Supabase types currently do not include the 'products' table.
 // Avoid referencing it at the type level to prevent TS errors.

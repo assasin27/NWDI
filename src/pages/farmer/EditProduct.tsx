@@ -7,7 +7,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { useToast } from '../../components/ui/use-toast';
-import { productService } from '../../services/productService';
+import { productService } from '../../services';
 import { useAuth } from '../../contexts';
 import { Product, ProductFormData } from '../../types/product';
 import { ArrowLeft, Save, Loader2, Trash2, Upload, Image as ImageIcon } from 'lucide-react';

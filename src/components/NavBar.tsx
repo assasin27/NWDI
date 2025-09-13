@@ -16,7 +16,7 @@ import {
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
-import { supabase } from '../integrations/supabase/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 const NavBar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

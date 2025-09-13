@@ -1,14 +1,16 @@
 BEGIN;
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- Create enum types
-CREATE TYPE order_status AS ENUM ('pending', 'shipped', 'delivered', 'cancelled');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+        CREATE TYPE order_status AS ENUM ('pending', 'shipped', 'delivered', 'cancelled');
+    END IF;
+END $$;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
@@ -22,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Seller profiles
 CREATE TABLE IF NOT EXISTS seller_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     farm_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -34,7 +36,7 @@ CREATE TABLE IF NOT EXISTS seller_profiles (
 
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -42,7 +44,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 -- Products
 CREATE TABLE IF NOT EXISTS products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     seller_id UUID NOT NULL REFERENCES seller_profiles(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- Orders
 CREATE TABLE IF NOT EXISTS orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status order_status DEFAULT 'pending',
     shipping_address TEXT NOT NULL,
@@ -68,7 +70,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- Order items
 CREATE TABLE IF NOT EXISTS order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id) ON DELETE SET NULL,
     product_name VARCHAR(255) NOT NULL,
@@ -78,7 +80,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 -- Reviews
 CREATE TABLE IF NOT EXISTS reviews (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
@@ -88,7 +90,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 -- Notifications
 CREATE TABLE IF NOT EXISTS notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
     type VARCHAR(50) NOT NULL,
@@ -97,13 +99,36 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- Indexes for better query performance
-CREATE INDEX idx_products_seller ON products(seller_id);
-CREATE INDEX idx_products_category ON products(category_id);
-CREATE INDEX idx_orders_user ON orders(user_id);
-CREATE INDEX idx_order_items_order ON order_items(order_id);
-CREATE INDEX idx_reviews_product ON reviews(product_id);
-CREATE INDEX idx_reviews_user ON reviews(user_id);
-CREATE INDEX idx_notifications_user ON notifications(user_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_seller') THEN
+        CREATE INDEX idx_products_seller ON products(seller_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_category') THEN
+        CREATE INDEX idx_products_category ON products(category_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_orders_user') THEN
+        CREATE INDEX idx_orders_user ON orders(user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_order_items_order') THEN
+        CREATE INDEX idx_order_items_order ON order_items(order_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_reviews_product') THEN
+        CREATE INDEX idx_reviews_product ON reviews(product_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_reviews_user') THEN
+        CREATE INDEX idx_reviews_user ON reviews(user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_notifications_user') THEN
+        CREATE INDEX idx_notifications_user ON notifications(user_id);
+    END IF;
+END $$;
 
 -- Enable Row Level Security on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

@@ -9,10 +9,8 @@ interface ErrorInfo {
 
 class ErrorHandler {
   private static instance: ErrorHandler;
-  private isProduction: boolean;
-
-  private constructor() {
-    this.isProduction = import.meta.env.PROD;
+  private isProduction: boolean;  private constructor() {
+    this.isProduction = process.env.NODE_ENV === 'production';
   }
 
   static getInstance(): ErrorHandler {

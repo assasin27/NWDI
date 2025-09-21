@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18.17.1-alpine3.18 as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY --chown=appuser:appgroup . .
 RUN npm run build
 
 # Production stage
-FROM node:18.17.1-alpine3.18
+FROM node:20-alpine
 
 # Install security updates and create non-root user
 RUN apk update && \
@@ -52,9 +52,6 @@ ENTRYPOINT ["/sbin/tini", "--"]
 
 # Expose port
 EXPOSE 3000
-
-# Start application
-CMD ["node", "dist/index.js"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s \

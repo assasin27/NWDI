@@ -3,24 +3,12 @@ import { BrowserRouter } from 'react-router-dom';
 import Login from '@/pages/Login';
 import ProductsSection from '@/components/ProductsSection';
 import { ProductCard } from '@/components/ProductCard';
-import { supabase } from '@/lib/supabase';
 import { createMockSupabaseClient } from '../helpers/mockSupabase';
-
-const mockSupabase = createMockSupabaseClient();
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock Supabase client
-jest.mock('@/lib/supabase', () => ({
-  supabase: mockSupabase,
-    },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      then: jest.fn(),
-    })),
-  },
+jest.mock('@/integrations/supabase/client', () => ({
+  supabase: createMockSupabaseClient(),
 }));
 
 // Mock React Router
@@ -116,19 +104,25 @@ describe('Frontend Security Tests', () => {
 
     it('should prevent XSS in product descriptions', () => {
       const productWithXSS = {
-        id: 1,
+        id: '1',
         name: 'Test Product',
         description: '<script>alert("XSS")</script>Fresh organic product',
         price: 9.99,
         category: 'Fruits',
         image: 'test.jpg',
         stock: 10,
+        inStock: true,
         variants: []
-      };
-
-      render(
+      };      render(
         <TestWrapper>
-          <ProductCard product={productWithXSS} />
+          <ProductCard 
+            product={productWithXSS} 
+            onAddToCart={() => {}}
+            onAddToWishlist={() => {}}
+            onRemoveFromWishlist={() => {}}
+            isWishlisted={false}
+            loading={false}
+          />
         </TestWrapper>
       );
 
@@ -191,19 +185,25 @@ describe('Frontend Security Tests', () => {
 
     it('should prevent DOM-based XSS in React components', () => {
       const maliciousProduct = {
-        id: 1,
+        id: '1',
         name: 'Test Product',
         description: 'Fresh product',
         price: 9.99,
         category: 'Fruits',
         image: 'javascript:alert("XSS")', // Malicious image URL
         stock: 10,
+        inStock: true,
         variants: []
-      };
-
-      render(
+      };      render(
         <TestWrapper>
-          <ProductCard product={maliciousProduct} />
+          <ProductCard 
+            product={maliciousProduct} 
+            onAddToCart={() => {}}
+            onAddToWishlist={() => {}}
+            onRemoveFromWishlist={() => {}}
+            isWishlisted={false}
+            loading={false}
+          />
         </TestWrapper>
       );
 

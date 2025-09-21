@@ -95,7 +95,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
   return <>{element}</>;
 };
 
-const FarmerPortal: React.FC = () => {
+const FarmerPortal = () => {
   return (
     <Routes>
       <Route path="/login" element={<FarmerLogin />} />

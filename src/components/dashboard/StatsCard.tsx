@@ -13,6 +13,7 @@ export interface StatsCardProps {
   };
   className?: string;
   isLoading?: boolean;
+  variant?: 'default' | 'warning' | 'error';
 }
 
 export function StatsCard({
@@ -23,6 +24,7 @@ export function StatsCard({
   trend,
   className,
   isLoading = false,
+  variant = 'default',
 }: StatsCardProps) {
   if (isLoading) {
     return (

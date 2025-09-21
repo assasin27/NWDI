@@ -66,10 +66,13 @@ const FarmerLogin: React.FC = () => {
         });
         return;
       }
+
+      // Update user metadata with farmer role
+      await apiService.updateUserMetadata({ role: 'farmer' });
       
       toast({
         title: 'Login Successful',
-        description: 'Welcome to your farmer dashboard!',
+        description: `Welcome ${response.data.profile?.name || 'Farmer'}!`,
       });
       
       // Refresh the page to ensure all auth state is properly set

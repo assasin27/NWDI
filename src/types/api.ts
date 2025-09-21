@@ -2,6 +2,8 @@ export interface BaseResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  success?: boolean;
+  isUpdate?: boolean;
 }
 
 export interface PaginatedResponse<T> extends BaseResponse<T> {

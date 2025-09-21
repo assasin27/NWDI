@@ -334,153 +334,7 @@ export class ApiService {
     }
   }
 
-  // Dashboard Statistics with role-based filtering
-  async getDashboardStats(): Promise<ApiResponse<{
-    totalRevenue: number;
-    totalOrders: number;
-    pendingOrders: number;
-    deliveredOrders: number;
-    totalProducts: number;
-    lowStockItems: number;
-    outOfStockItems: number;
-    revenueChange: number;
-    ordersChange: number;
-  }>> {
-    try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw new Error('Authentication required');
-      
-      // Get seller profile if exists
-      const { data: sellerProfile } = await supabase
-        .from('seller_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      const isSeller = !!sellerProfile;
-      const sellerId = sellerProfile?.id;
-      const countOptions = { count: 'exact' as const, head: true as const };
-      
-      // Initialize stats with default values
-      const stats = {
-        totalRevenue: 0,
-        totalOrders: 0,
-        pendingOrders: 0,
-        deliveredOrders: 0,
-        totalProducts: 0,
-        lowStockItems: 0,
-        outOfStockItems: 0,
-        revenueChange: 0,
-        ordersChange: 0
-      };
 
-      // Get seller's product IDs if seller
-      let productIds: string[] = [];
-      if (isSeller && sellerId) {
-        const { data: products } = await supabase
-          .from('products')
-          .select('id')
-          .eq('seller_id', sellerId);
-        productIds = products?.map(p => p.id) || [];
-      }
-
-      // Get seller's order IDs if seller
-      let orderIds: string[] = [];
-      if (isSeller && productIds.length > 0) {
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('order_id')
-          .in('product_id', productIds);
-        orderIds = [...new Set(orderItems?.map(oi => oi.order_id) || [])];
-      }
-      
-      // Base queries with role-based filtering
-      const baseOrderQuery = isSeller && orderIds.length > 0
-        ? supabase.from('orders').in('id', orderIds)
-        : supabase.from('orders');
-        
-      const baseProductQuery = isSeller && sellerId
-        ? supabase.from('products').eq('seller_id', sellerId)
-        : supabase.from('products');
-      
-      try {
-        // Execute all queries in parallel
-        const [
-          revenueResult,
-          ordersResult,
-          pendingResult,
-          deliveredResult,
-          productsResult,
-          lowStockResult,
-          outOfStockResult
-        ] = await Promise.all([
-          // Total revenue from delivered orders (filtered by seller if applicable)
-          baseOrderQuery
-            .select('total_amount')
-            .eq('status', 'delivered')
-            .then(({ data, error }) => {
-              if (error) throw error;
-              return { data: data?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0 };
-            }),
-            
-          // Total orders count (filtered by seller if applicable)
-          baseOrderQuery.select('*', countOptions),
-            
-          // Pending orders count (filtered by seller if applicable)
-          baseOrderQuery
-            .select('*', countOptions)
-            .eq('status', 'pending'),
-            
-          // Delivered orders count (filtered by seller if applicable)
-          baseOrderQuery
-            .select('*', countOptions)
-            .eq('status', 'delivered'),
-            
-          // Total products count (filtered by seller if applicable)
-          baseProductQuery.select('*', countOptions),
-            
-          // Low stock items count (filtered by seller if applicable)
-          baseProductQuery
-            .select('*', countOptions)
-            .lt('stock_quantity', 5)
-            .gt('stock_quantity', 0),
-            
-          // Out of stock items count (filtered by seller if applicable)
-          baseProductQuery
-            .select('*', countOptions)
-            .eq('stock_quantity', 0)
-        ]);
-        
-        // Update stats with query results
-        stats.totalRevenue = revenueResult.data || 0;
-        stats.totalOrders = ordersResult.count || 0;
-        stats.pendingOrders = pendingResult.count || 0;
-        stats.deliveredOrders = deliveredResult.count || 0;
-        stats.totalProducts = productsResult.count || 0;
-        stats.lowStockItems = lowStockResult.count || 0;
-        stats.outOfStockItems = outOfStockResult.count || 0;
-        
-        return {
-          data: stats,
-          status: 200,
-          success: true
-        };
-        
-      } catch (error) {
-        logger.error('Error fetching dashboard stats:', error);
-        throw new Error('Failed to fetch dashboard statistics');
-      }
-      
-    } catch (error) {
-      logger.error('Error in getDashboardStats:', error);
-      return {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
-        success: false
-      };
-    }
-  }
 
   // Product Management with improved error handling
   async getProducts(params: PaginationParams = { limit: 10, page: 1 }) {
@@ -1349,8 +1203,8 @@ export class ApiService {
     }
   }
 
-  // Dashboard Statistics with role-based filtering
-  async getDashboardStats(): Promise<ApiResponse<{
+  // Dashboard Statistics with role-based filtering (duplicate removed)
+  async getDashboardStatsV2(): Promise<ApiResponse<{
     totalRevenue: number;
     totalOrders: number;
     pendingOrders: number;
@@ -1360,6 +1214,8 @@ export class ApiService {
     outOfStockItems: number;
     revenueChange: number;
     ordersChange: number;
+    averageOrderValue: number;
+    conversionRate: number;
   }>> {
     try {
       // Get current user
@@ -1377,20 +1233,9 @@ export class ApiService {
       const sellerId = sellerProfile?.id;
       const countOptions = { count: 'exact' as const, head: true as const };
       
-      // Get seller's order IDs if seller
-      let orderIds: string[] = [];
-      if (isSeller && sellerId) {
-        orderIds = await this.getSellerOrderIds(sellerId);
-      }
-      
-      // Base queries with role-based filtering
-      const baseOrderQuery = isSeller && orderIds.length > 0
-        ? supabase.from('orders').in('id', orderIds)
-        : supabase.from('orders');
-        
-      const baseProductQuery = isSeller && sellerId
-        ? supabase.from('products').eq('seller_id', sellerId)
-        : supabase.from('products');
+      // Execute queries in parallel using direct filtering approach
+      const orderQueryFilter = isSeller && sellerId ? { seller_id: sellerId } : {};
+      const productQueryFilter = isSeller && sellerId ? { seller_id: sellerId } : {};
       
       // Execute queries in parallel
       const [
@@ -1403,36 +1248,52 @@ export class ApiService {
         { count: outOfStockItems }
       ] = await Promise.all([
         // Total Revenue (only delivered orders)
-        baseOrderQuery
+        supabase
+          .from('orders')
           .select('total_amount')
-          .eq('status', 'delivered'),
+          .eq('status', 'delivered')
+          .match(orderQueryFilter),
         
         // Total Orders
-        baseOrderQuery.select('*', countOptions),
+        supabase
+          .from('orders')
+          .select('*', countOptions)
+          .match(orderQueryFilter),
         
         // Pending Orders
-        baseOrderQuery
+        supabase
+          .from('orders')
           .select('*', countOptions)
-          .eq('status', 'pending'),
+          .eq('status', 'pending')
+          .match(orderQueryFilter),
         
         // Delivered Orders
-        baseOrderQuery
+        supabase
+          .from('orders')
           .select('*', countOptions)
-          .eq('status', 'delivered'),
+          .eq('status', 'delivered')
+          .match(orderQueryFilter),
         
         // Total Products
-        baseProductQuery.select('*', countOptions),
+        supabase
+          .from('products')
+          .select('*', countOptions)
+          .match(productQueryFilter),
         
         // Low Stock Items (below 5 but not zero)
-        baseProductQuery
+        supabase
+          .from('products')
           .select('*', countOptions)
           .lt('stock_quantity', 5)
-          .gt('stock_quantity', 0),
+          .gt('stock_quantity', 0)
+          .match(productQueryFilter),
         
         // Out of Stock Items
-        baseProductQuery
+        supabase
+          .from('products')
           .select('*', countOptions)
           .eq('stock_quantity', 0)
+          .match(productQueryFilter)
       ]);
       
       // Calculate total revenue
@@ -1446,24 +1307,30 @@ export class ApiService {
       previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 1);
       
       // Get previous period revenue and orders
-      const { data: previousPeriodData } = await baseOrderQuery
+      const { data: previousPeriodData } = await supabase
+        .from('orders')
         .select('total_amount, created_at')
         .lt('created_at', previousPeriodStart.toISOString())
-        .eq('status', 'delivered');
+        .eq('status', 'delivered')
+        .match(orderQueryFilter);
       
       const previousPeriodRevenue = previousPeriodData?.reduce(
         (sum: number, order: { total_amount: number }) => sum + (order.total_amount || 0), 0
       ) || 0;
       
       // Get previous period order counts
-      const { count: previousPeriodOrders } = await baseOrderQuery
-        .select('*', { count: 'exact', head: true })
-        .lt('created_at', previousPeriodStart.toISOString());
-      
-      const { count: previousPeriodDelivered } = await baseOrderQuery
+      const { count: previousPeriodOrders } = await supabase
+        .from('orders')
         .select('*', { count: 'exact', head: true })
         .lt('created_at', previousPeriodStart.toISOString())
-        .eq('status', 'delivered');
+        .match(orderQueryFilter);
+      
+      const { count: previousPeriodDelivered } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .lt('created_at', previousPeriodStart.toISOString())
+        .eq('status', 'delivered')
+        .match(orderQueryFilter);
       
       // Calculate percentage changes
       const calculateChange = (current: number, previous: number): number => {
@@ -1501,7 +1368,7 @@ export class ApiService {
           // Period-over-period changes
           revenueChange,
           ordersChange,
-          deliveredOrdersChange,
+          // deliveredOrdersChange, // Removed to match interface
           
           // Additional metrics
           averageOrderValue,

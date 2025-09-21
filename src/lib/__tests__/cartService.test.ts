@@ -96,7 +96,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.addToCart(mockItem, 'user123');
+      const result = await cartService.addToCart('user123', 'prod1', 1);
 
       expect(result).toBe(true);
       expect(mockSupabase.from).toHaveBeenCalledWith('cart_items');
@@ -126,7 +126,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.addToCart(mockItem, 'user123');
+      const result = await cartService.addToCart('user123', 'prod1', 1);
 
       expect(result).toBe(true);
     });
@@ -154,7 +154,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.addToCart(mockItem, 'user123');
+      const result = await cartService.addToCart('user123', 'prod1', 1);
 
       expect(result).toBe(false);
     });
@@ -175,7 +175,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.removeFromCart('item1', 'user123');
+      const result = await cartService.removeFromCart('user123', 'item1');
 
       expect(result).toBe(true);
       expect(mockSupabase.from).toHaveBeenCalledWith('cart_items');
@@ -196,7 +196,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.removeFromCart('item1', 'user123');
+      const result = await cartService.removeFromCart('user123', 'item1');
 
       expect(result).toBe(false);
     });
@@ -217,7 +217,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.updateQuantity('item1', 3, 'user123');
+      const result = await cartService.updateQuantity('user123', '1', 3);
 
       expect(result).toBe(true);
     });
@@ -237,7 +237,7 @@ describe('cartService', () => {
 
       mockSupabase.from.mockReturnValue(mockFrom as any);
 
-      const result = await cartService.updateQuantity('item1', 3, 'user123');
+      const result = await cartService.updateQuantity('user123', '1', 3);
 
       expect(result).toBe(false);
     });

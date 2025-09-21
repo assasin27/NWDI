@@ -20,6 +20,7 @@ export interface ApiResponse<T> {
   message?: string;
   status?: number;
   success?: boolean;
+  isUpdate?: boolean;
 }
 
 export interface ValidationRule {
@@ -548,6 +549,7 @@ export class ApiService {
   // Authentication methods
   async login(email: string, password: string): Promise<ApiResponse<any>> {
     try {
+      // First sign in with Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -560,9 +562,53 @@ export class ApiService {
           success: false
         };
       }
-      
+
+      // Check if a farmer profile exists
+      const { data: farmerProfile, error: farmerError } = await supabase
+        .from('farmer_profiles')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (!farmerProfile && !farmerError) {
+        // Create a farmer profile if one doesn't exist
+        const { data: newFarmerProfile, error: createError } = await supabase
+          .from('farmer_profiles')
+          .insert([
+            {
+              user_id: data.user.id,
+              email: data.user.email,
+              name: data.user.user_metadata?.full_name || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ])
+          .select('*')
+          .single();
+
+        if (createError) {
+          return {
+            error: 'Failed to create farmer profile',
+            status: 500,
+            success: false
+          };
+        }
+
+        return {
+          data: {
+            user: data.user,
+            profile: newFarmerProfile
+          },
+          status: 200,
+          success: true
+        };
+      }
+
       return {
-        data: data.user,
+        data: {
+          user: data.user,
+          profile: farmerProfile
+        },
         status: 200,
         success: true
       };
@@ -570,6 +616,35 @@ export class ApiService {
       logger.error('Login error:', error);
       return {
         error: 'Authentication failed',
+        status: 500,
+        success: false
+      };
+    }
+  }
+
+  async updateUserMetadata(metadata: Record<string, any>): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: metadata
+      });
+
+      if (error) {
+        return {
+          error: error.message,
+          status: 400,
+          success: false
+        };
+      }
+
+      return {
+        data: data.user,
+        status: 200,
+        success: true
+      };
+    } catch (error) {
+      logger.error('Update user metadata error:', error);
+      return {
+        error: 'Failed to update user metadata',
         status: 500,
         success: false
       };
@@ -608,6 +683,142 @@ export class ApiService {
         status: 500,
         success: false
       };
+    }
+  }
+
+  // Cart methods
+  async testCartConnection(): Promise<ApiResponse<boolean>> {
+    try {
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select('*')
+        .limit(1);
+      
+      if (error) throw error;
+      return { data: true, success: true };
+    } catch (error) {
+      logger.error('Error testing cart connection:', error);
+      return { error, success: false };
+    }
+  }
+
+  async getCartItems(userId: string): Promise<ApiResponse<any>> {
+    try {
+      const { data, error } = await supabase
+        .from('cart_items')
+        .select(`
+          *,
+          product:product_id (*)
+        `)
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return { data, success: true };
+    } catch (error) {
+      logger.error('Error getting cart items:', error);
+      return { error, success: false };
+    }
+  }
+
+  async addToCart(userId: string, productId: string, quantity: number = 1, variant?: any): Promise<ApiResponse<any>> {
+    try {
+      // Check if item already exists in cart
+      const { data: existingItems, error: fetchError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('user_id', userId);
+      
+      if (fetchError) throw fetchError;
+
+      if (existingItems && existingItems.length > 0) {
+        // Update quantity if item exists
+        const { data, error } = await supabase
+          .from('cart_items')
+          .update({ 
+            quantity: (existingItems[0].quantity || 1) + quantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingItems[0].id)
+          .select();
+        
+        if (error) throw error;
+        return { data: data?.[0], success: true, isUpdate: true };
+      } else {
+        // Add new item to cart
+        const { data, error } = await supabase
+          .from('cart_items')
+          .insert([{ 
+            product_id: productId,
+            user_id: userId,
+            quantity: quantity,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select();
+        
+        if (error) throw error;
+        return { data: data?.[0], success: true, isUpdate: false };
+      }
+    } catch (error) {
+      logger.error('Error adding to cart:', error);
+      return { error, success: false };
+    }
+  }
+
+  async removeFromCart(userId: string, productId: string, variant?: any): Promise<ApiResponse<boolean>> {
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('product_id', productId)
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return { data: true, success: true };
+    } catch (error) {
+      logger.error('Error removing from cart:', error);
+      return { error, success: false };
+    }
+  }
+
+  async updateQuantity(userId: string, productId: string, quantity: number, variant?: any): Promise<ApiResponse<any>> {
+    try {
+      if (quantity <= 0) {
+        // If quantity is 0 or less, remove the item from cart
+        return this.removeFromCart(userId, productId, variant);
+      }
+
+      const { data, error } = await supabase
+        .from('cart_items')
+        .update({ 
+          quantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('product_id', productId)
+        .eq('user_id', userId)
+        .select();
+      
+      if (error) throw error;
+      return { data: data?.[0], success: true };
+    } catch (error) {
+      logger.error('Error updating cart quantity:', error);
+      return { error, success: false };
+    }
+  }
+
+  async clearCart(userId: string): Promise<ApiResponse<boolean>> {
+    try {
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return { data: true, success: true };
+    } catch (error) {
+      logger.error('Error clearing cart:', error);
+      return { error, success: false };
     }
   }
 }

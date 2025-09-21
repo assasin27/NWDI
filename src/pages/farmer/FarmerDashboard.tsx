@@ -67,7 +67,9 @@ const FarmerDashboardContent: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
   // Convert date range to required format
-  const dateRangeParam = dateRange[0] && dateRange[1] ? {
+  const dateRangeParam: DateRange | undefined = dateRange[0] && dateRange[1] ? {
+    startDate: dateRange[0],
+    endDate: dateRange[1],
     from: format(dateRange[0], 'yyyy-MM-dd'),
     to: format(dateRange[1], 'yyyy-MM-dd')
   } : undefined;
@@ -81,7 +83,7 @@ const FarmerDashboardContent: React.FC = () => {
     inventory: inventoryData, 
     customers: customersData, 
     isLoading: analyticsLoading 
-  } = useFarmerAnalytics(dateRangeParam || { from: '', to: '' });
+  } = useFarmerAnalytics(dateRangeParam || { startDate: new Date(), endDate: new Date(), from: '', to: '' });
 
   const stats = statsQuery.data;
   const isLoading = statsQuery.isLoading || productsLoading || ordersLoading || analyticsLoading;

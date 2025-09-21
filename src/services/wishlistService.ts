@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { WishlistItem } from '../types/wishlist';
-import { handleError } from '../utils/errorHandler';
+import { errorHandler } from '../lib/errorHandler';
 
 export class WishlistService {
   private readonly tableName = 'wishlist_items';
@@ -36,11 +36,10 @@ export class WishlistService {
 
       if (error) {
         throw error;
-      }
-
-      return data || [];
+      }      return data || [];
     } catch (error) {
-      throw handleError('Failed to fetch wishlist items', error);
+      errorHandler.handleError(error as Error, 'WishlistService.getWishlistItems');
+      return [];
     }
   }
 
@@ -50,18 +49,18 @@ export class WishlistService {
         .from(this.tableName)
         .insert([{ ...item, user_id: userId }])
         .select()
-        .single();
-
-      if (error) {
+        .single();      if (error) {
         if (error.code === '23505') { // Unique constraint violation
-          throw handleError('Item already in wishlist', error, 'DUPLICATE_ITEM');
+          errorHandler.handleError(error as Error, 'WishlistService.addToWishlist - Duplicate item');
+          throw new Error('Item already in wishlist');
         }
         throw error;
       }
 
       return data;
     } catch (error) {
-      throw handleError('Failed to add item to wishlist', error);
+      errorHandler.handleError(error as Error, 'WishlistService.addToWishlist');
+      throw new Error('Failed to add item to wishlist');
     }
   }
 
@@ -70,13 +69,12 @@ export class WishlistService {
       const { error } = await supabase
         .from(this.tableName)
         .delete()
-        .match({ user_id: userId, product_id: productId });
-
-      if (error) {
+        .match({ user_id: userId, product_id: productId });      if (error) {
         throw error;
       }
     } catch (error) {
-      throw handleError('Failed to remove item from wishlist', error);
+      errorHandler.handleError(error as Error, 'WishlistService.removeFromWishlist');
+      throw new Error('Failed to remove item from wishlist');
     }
   }
 
@@ -85,13 +83,12 @@ export class WishlistService {
       const { error } = await supabase
         .from(this.tableName)
         .delete()
-        .eq('user_id', userId);
-
-      if (error) {
+        .eq('user_id', userId);      if (error) {
         throw error;
       }
     } catch (error) {
-      throw handleError('Failed to clear wishlist', error);
+      errorHandler.handleError(error as Error, 'WishlistService.clearWishlist');
+      throw new Error('Failed to clear wishlist');
     }
   }
 
@@ -105,11 +102,10 @@ export class WishlistService {
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
         throw error;
-      }
-
-      return !!data;
+      }      return !!data;
     } catch (error) {
-      throw handleError('Failed to check wishlist status', error);
+      errorHandler.handleError(error as Error, 'WishlistService.isInWishlist');
+      return false;
     }
   }
 

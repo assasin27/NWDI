@@ -46,13 +46,13 @@ export const setupFarmerAccount = async () => {
 
         console.log('Sign in successful:', signInData);
         
-        // Create farmer profile
+        // Create admin profile
         const { data: profileData, error: profileError } = await supabase
-          .from('farmer_profiles')
+          .from('admin_profile')
           .insert({
             user_id: signInData.user.id,
-            email: 'test@nareshwadi.in',
-            name: 'Nareshwadi Farmer'
+            contact_email: 'test@nareshwadi.in',
+            farm_name: 'Nareshwadi Farm'
           })
           .select()
           .single();
@@ -72,13 +72,13 @@ export const setupFarmerAccount = async () => {
     } else {
       console.log('Farmer account created:', signUpData);
       
-      // Create farmer profile
+      // Create admin profile
       const { data: profileData, error: profileError } = await supabase
-        .from('farmer_profiles')
+        .from('admin_profile')
         .insert({
           user_id: signUpData.user.id,
-          email: 'test@nareshwadi.in',
-          name: 'Nareshwadi Farmer'
+          contact_email: 'test@nareshwadi.in',
+          farm_name: 'Nareshwadi Farm'
         })
         .select()
         .single();
@@ -101,11 +101,11 @@ export const setupFarmerAccount = async () => {
 
 export const checkFarmerAccount = async () => {
   try {
-    // Check if farmer profile exists
+    // Check if admin profile exists
     const { data: profiles, error } = await supabase
-      .from('farmer_profiles')
+      .from('admin_profile')
       .select('*')
-      .eq('email', 'test@nareshwadi.in');
+      .eq('contact_email', 'test@nareshwadi.in');
 
     if (error) {
       console.error('Error checking farmer profiles:', error);

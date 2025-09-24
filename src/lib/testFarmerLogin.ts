@@ -18,9 +18,9 @@ export const testFarmerLogin = async () => {
     if (data.user) {
       console.log('Login successful:', data.user);
       
-      // Check if user has a farmer profile
+      // Check if user has an admin profile
       const { data: profile, error: profileError } = await supabase
-        .from('farmer_profiles')
+        .from('admin_profile')
         .select('*')
         .eq('user_id', data.user.id)
         .single();
@@ -31,7 +31,7 @@ export const testFarmerLogin = async () => {
         return { success: false, error: 'No farmer profile found' };
       }
 
-      console.log('Farmer profile found:', profile);
+      console.log('Admin profile found:', profile);
       await supabase.auth.signOut();
       return { success: true, message: 'Farmer login test successful!' };
     }

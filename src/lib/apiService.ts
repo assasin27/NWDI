@@ -546,81 +546,167 @@ export class ApiService {
     }
   }
 
+  // Track login attempts by email
+  private loginAttempts: Map<string, { count: number, lastAttempt: number }> = new Map();
+  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
   // Authentication methods
-  async login(email: string, password: string): Promise<ApiResponse<any>> {
+  async logout(): Promise<{ error?: string }> {
     try {
-      // First sign in with Supabase auth
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      return {};
+    } catch (error) {
+      logger.error('Logout error:', error);
+      return { error: error instanceof Error ? error.message : 'Failed to log out' };
+    }
+  }
+
+  async login(email: string, password: string): Promise<ApiResponse<any>> {
+    const attemptKey = `login_${email.toLowerCase().trim()}`;
+    const now = Date.now();
+    
+    // Check for existing session first
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        logger.info('User already has an active session');
+        return {
+          data: { user: session.user },
+          status: 200,
+          success: true
+        };
+      }
+    } catch (sessionError) {
+      logger.error('Error checking session:', sessionError);
+    }
+
+    // Rate limiting check
+    const attempt = this.loginAttempts.get(attemptKey) || { count: 0, lastAttempt: 0 };
+    
+    // Reset counter if last attempt was outside the time window
+    if (now - attempt.lastAttempt > this.LOGIN_ATTEMPT_WINDOW) {
+      this.loginAttempts.set(attemptKey, { count: 1, lastAttempt: now });
+    } else {
+      // Check if max attempts reached
+      if (attempt.count >= this.MAX_LOGIN_ATTEMPTS) {
+        logger.warn(`Too many login attempts for ${email}`);
+        return {
+          error: 'Too many login attempts. Please try again later.',
+          status: 429,
+          success: false
+        };
+      }
+      // Increment attempt count
+      this.loginAttempts.set(attemptKey, { 
+        count: attempt.count + 1, 
+        lastAttempt: now 
+      });
+    }
+
+    try {
+      // Sign in with Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
       });
       
       if (error) {
+        logger.error(`Login failed for ${email}:`, error.message);
         return {
-          error: error.message,
+          error: error.message || 'Invalid email or password',
           status: 401,
           success: false
         };
       }
 
-      // Check if a farmer profile exists
-      const { data: farmerProfile, error: farmerError } = await supabase
-        .from('farmer_profiles')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single();
+      // Reset login attempts on successful login
+      this.loginAttempts.delete(attemptKey);
+      logger.info(`User ${email} logged in successfully`);
 
-      if (!farmerProfile && !farmerError) {
-        // Create a farmer profile if one doesn't exist
-        const { data: newFarmerProfile, error: createError } = await supabase
-          .from('farmer_profiles')
-          .insert([
-            {
-              user_id: data.user.id,
-              email: data.user.email,
-              name: data.user.user_metadata?.full_name || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ])
-          .select('*')
-          .single();
+      // Check if a farmer profile exists with timeout
+      const profileResult = await Promise.race([
+        this.getOrCreateFarmerProfile(data.user.id, data.user.email, data.user.user_metadata?.full_name),
+        new Promise<ApiResponse<any>>((_, reject) => 
+          setTimeout(() => reject(new Error('Profile check timed out')), 10000)
+        )
+      ]);
 
-        if (createError) {
-          return {
-            error: 'Failed to create farmer profile',
-            status: 500,
-            success: false
-          };
-        }
-
-        return {
-          data: {
-            user: data.user,
-            profile: newFarmerProfile
-          },
-          status: 200,
-          success: true
-        };
+      if (!profileResult.success) {
+        logger.error('Profile check failed:', profileResult.error);
+        // Don't log out the user, just return the profile error
+        return profileResult;
       }
 
       return {
         data: {
           user: data.user,
-          profile: farmerProfile
+          profile: profileResult.data
         },
         status: 200,
         success: true
       };
     } catch (error) {
-      logger.error('Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      logger.error('Login error:', errorMessage);
       return {
-        error: 'Authentication failed',
+        error: errorMessage,
         status: 500,
         success: false
       };
     }
   }
+
+  // Helper method to get or create farmer profile with error handling
+private async getOrCreateFarmerProfile(
+  userId: string, 
+  email: string, 
+  fullName?: string
+): Promise<ApiResponse<any>> {
+  try {
+    // First try to get existing profile
+    const { data: farmerProfile, error: fetchError } = await supabase
+      .from('farmer_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // If profile exists, return it
+    if (farmerProfile && !fetchError) {
+      return { data: farmerProfile, success: true };
+    }
+
+    // If we get here, profile doesn't exist, so create one
+    const { data: newProfile, error: createError } = await supabase
+      .from('farmer_profiles')
+      .insert([
+        {
+          user_id: userId,
+          email: email,
+          name: fullName || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
+      .select('*')
+      .single();
+
+    if (createError) {
+      throw new Error(`Failed to create profile: ${createError.message}`);
+    }
+
+    return { data: newProfile, success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process profile';
+    logger.error('Profile error:', errorMessage);
+    return {
+      error: errorMessage,
+      status: 500,
+      success: false
+    };
+  }
+}
 
   async updateUserMetadata(metadata: Record<string, any>): Promise<ApiResponse<any>> {
     try {

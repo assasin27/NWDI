@@ -32,15 +32,7 @@ CREATE POLICY "Farmers can update their own profile"
     ON farmer_profiles FOR UPDATE
     USING (auth.uid() = user_id);
 
-CREATE POLICY "Admin can view all profiles"
-    ON farmer_profiles FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM auth.users
-            WHERE auth.users.id = auth.uid()
-            AND auth.users.email = 'admin@nareshwadi.in'
-        )
-    );
+-- Removed email-based admin check; admin is determined via admin_profile presence elsewhere
 
 -- Function to auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_farmer_profiles_timestamp()

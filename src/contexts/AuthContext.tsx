@@ -59,19 +59,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Fetch user profile from the database
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      // First try to fetch from farmer_profiles
+      // First try to fetch from admin_profile
       let { data: farmerProfile, error: farmerError } = await supabase
-        .from('farmer_profiles')
+        .from('admin_profile')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (farmerProfile) {
         return {
           id: farmerProfile.id,
           user_id: farmerProfile.user_id,
-          full_name: farmerProfile.name || '',
-          email: farmerProfile.email,
+          full_name: farmerProfile.farm_name || '',
+          email: farmerProfile.contact_email,
           role: 'farmer' as UserRole,
           created_at: farmerProfile.created_at,
           updated_at: farmerProfile.updated_at,
@@ -85,7 +85,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('user_id', userId)
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        return null;
+      }
       return userProfile as UserProfile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -112,27 +114,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      console.log('Checking for farmer profile');
-      // First check for farmer profile
+      console.log('Checking for admin profile');
+      // First check for admin profile
       const { data: farmerProfile, error: farmerError } = await supabase
-        .from('farmer_profiles')
+        .from('admin_profile')
         .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
       if (farmerError) {
-        console.error('Error fetching farmer profile:', farmerError);
-        throw farmerError;
+        console.error('Error fetching admin profile:', farmerError);
       }
 
-      console.log('Farmer profile found:', farmerProfile);
+      console.log('Admin profile found:', farmerProfile);
 
       if (farmerProfile) {
         const profile = {
           id: farmerProfile.id,
           user_id: farmerProfile.user_id,
           full_name: farmerProfile.farm_name || '',
-          email: farmerProfile.email,
+          email: farmerProfile.contact_email,
           role: 'farmer' as UserRole,
           created_at: farmerProfile.created_at,
           updated_at: farmerProfile.updated_at,
@@ -273,19 +274,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Failed to create user');
-
-      // Create farmer profile
-      const farmerProfile = {
-        user_id: data.user.id,
-        email,
-        name: userData.full_name || '',
-      };
-
-      const { error: profileError } = await supabase
-        .from('farmer_profiles')
-        .insert([farmerProfile]);
-
-      if (profileError) throw profileError;
 
       await updateAuthState(data.session);
       return { error: null };

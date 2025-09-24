@@ -2,10 +2,11 @@ export interface FarmerProfile {
   id: string;
   user_id: string;
   farm_name: string;
-  farm_address: string;
-  phone: string;
   description?: string;
+  region?: string;
   certification?: string;
+  contact_email?: string;
+  contact_phone?: string;
   created_at: string;
   updated_at: string;
 }

@@ -9,15 +9,17 @@ export function useSupabaseUser() {
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('Error getting user:', error);
+          console.error('Error getting session:', error);
+          setUser(null);
+        } else if (!session) {
           setUser(null);
         } else {
-          setUser(user);
+          setUser(session.user);
         }
       } catch (error) {
-        console.error('Error in getUser:', error);
+        console.error('Error in getSession:', error);
         setUser(null);
       } finally {
         setLoading(false);

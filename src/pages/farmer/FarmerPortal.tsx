@@ -38,16 +38,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
           return;
         }
 
-        // Check farmer_profiles table
+        // Check admin_profile table
         const { data: farmerProfile, error } = await supabase
-          .from('farmer_profiles')
+          .from('admin_profile')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          console.error('Error checking farmer profile:', error);
-          throw error;
+          console.error('Error checking admin profile:', error);
         }
 
         if (farmerProfile) {

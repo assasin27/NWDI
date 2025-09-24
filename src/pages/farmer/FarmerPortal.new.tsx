@@ -31,23 +31,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
       }
 
       try {
-        // Check auth context first
-        if (profile?.role === 'farmer') {
+        // Check auth context for both farmer and admin roles
+        if (profile?.role === 'farmer' || profile?.role === 'admin') {
           setIsAuthorized(true);
           setIsVerifying(false);
           return;
         }
 
-        // Check farmer_profiles table
+        // Check admin_profile table
         const { data: farmerProfile, error } = await supabase
-          .from('farmer_profiles')
+          .from('admin_profile')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          console.error('Error checking farmer profile:', error);
-          throw error;
+          console.error('Error checking admin profile:', error);
         }
 
         if (farmerProfile) {

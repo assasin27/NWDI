@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { User, Lock, ArrowRight, ArrowLeft, Loader2, Mail } from 'lucide-react';
 import { ApiService } from '../../lib/apiService';
+import { supabase } from '../../lib/supabase';
 const apiService = new ApiService();
 import { useToast } from '../../components/ui/use-toast';
 import { z } from 'zod';
@@ -36,47 +37,117 @@ const FarmerLogin: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'test@nareshwadi.in',
-      password: 'farmer',
+      email: '',
+      password: '',
     },
   });
 
   // Check if user is already logged in
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await apiService.getCurrentUser();
-      if (data?.user) {
-        navigate('/farmer/dashboard');
+      try {
+        const { data } = await apiService.getCurrentUser();
+        if (data?.user) {
+          // Determine redirect path based on role
+          const userRole = data.user.user_metadata?.role || 'farmer';
+          const redirectPath = userRole === 'admin' 
+            ? '/admin/dashboard' 
+            : '/farmer/dashboard';
+          
+          // Use replace to prevent going back to login page
+          navigate(redirectPath, { replace: true });
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+        // Clear any invalid session data
+        await apiService.logout();
       }
     };
+    
     checkSession();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event) => {
+        console.log('Auth state changed:', event);
+        
+        // Handle sign out events
+        if (event === 'SIGNED_OUT') {
+          // Clear any cached data on sign out
+          // Add any additional cleanup needed
+          console.log('User signed out');
+          return;
+        }
+        
+        // Handle other auth events
+        switch (event) {
+          case 'TOKEN_REFRESHED':
+            console.log('Token refreshed');
+            break;
+          case 'USER_UPDATED':
+            console.log('User updated');
+            break;
+          case 'SIGNED_IN':
+            console.log('User signed in');
+            break;
+          case 'PASSWORD_RECOVERY':
+            console.log('Password recovery requested');
+            break;
+          default:
+            console.log('Unhandled auth event:', event);
+        }
+      }
+    );
+    
+    // Cleanup subscription on unmount
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [navigate]);
 
   const handleLogin = async (formData: LoginFormData) => {
     setIsLoading(true);
     
     try {
-      const response = await apiService.login(formData.email, formData.password);
+      // Sanitize inputs
+      const sanitizedData = {
+        email: formData.email.trim(),
+        password: formData.password // Don't trim passwords as spaces might be valid
+      };
       
-      if (response.error || !response.data) {
+      const response = await apiService.login(sanitizedData.email, sanitizedData.password);
+      
+      if (!response || response.error || !response.data) {
+        const errorMessage = response?.error || 'Invalid email or password';
         toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: response.error || 'Invalid email or password',
+          description: errorMessage,
         });
         return;
       }
 
-      // Update user metadata with farmer role
-      await apiService.updateUserMetadata({ role: 'farmer' });
+      // Update user metadata with role if not set
+      if (!response.data.user.user_metadata?.role) {
+        await apiService.updateUserMetadata({ 
+          role: 'farmer',
+          last_login: new Date().toISOString()
+        });
+      }
+      
+      // Determine redirect path based on role
+      const userRole = response.data.user.user_metadata?.role || 'farmer';
+      const redirectPath = userRole === 'admin' 
+        ? '/admin/dashboard' 
+        : '/farmer/dashboard';
       
       toast({
         title: 'Login Successful',
-        description: `Welcome ${response.data.profile?.name || 'Farmer'}!`,
+        description: `Welcome ${response.data.profile?.name || userRole}!`,
       });
       
-      // Refresh the page to ensure all auth state is properly set
-      window.location.href = '/farmer/dashboard';
+      // Use window.location.href for full page reload to ensure all auth state is properly set
+      window.location.href = redirectPath;
       
     } catch (error) {
       console.error('Login error:', error);
@@ -91,7 +162,9 @@ const FarmerLogin: React.FC = () => {
   };
 
   const handlePasswordReset = async () => {
-    if (!resetEmail) {
+    const email = resetEmail.trim();
+    
+    if (!email) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -100,23 +173,69 @@ const FarmerLogin: React.FC = () => {
       return;
     }
 
-    setIsResetting(true);
-    try {
-      const { error } = await apiService.resetPassword(resetEmail);
-      if (error) {
-        throw error;
-      }
-      toast({
-        title: 'Password Reset Email Sent',
-        description: 'Check your email for instructions to reset your password.',
-      });
-      setShowPasswordReset(false);
-      setResetEmail('');
-    } catch (error) {
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'Failed to send password reset email',
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+      });
+      return;
+    }
+
+    setIsResetting(true);
+    
+    try {
+      // First check if email exists
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email_confirmed_at')
+        .eq('email', email)
+        .single();
+
+      if (userError || !userData) {
+        // Don't reveal if email exists for security
+        toast({
+          title: 'If your email exists in our system, you will receive a password reset link.',
+          description: 'Please check your inbox and spam folder.',
+        });
+        setShowPasswordReset(false);
+        setResetEmail('');
+        return;
+      }
+
+      // If email exists but not confirmed
+      if (!userData.email_confirmed_at) {
+        toast({
+          variant: 'destructive',
+          title: 'Email Not Verified',
+          description: 'Please verify your email before resetting your password.',
+        });
+        return;
+      }
+
+      // If we get here, email exists and is verified
+      const { error } = await apiService.resetPassword(email);
+      
+      if (error) {
+        throw new Error(error);
+      }
+
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Check your email for instructions to reset your password. The link will expire in 1 hour.',
+      });
+      
+      setShowPasswordReset(false);
+      setResetEmail('');
+      
+    } catch (error) {
+      console.error('Password reset error:', error);
+      
+      // Don't show specific error messages that might help attackers
+      toast({
+        title: 'Password Reset',
+        description: 'If your email exists in our system, you will receive a password reset link. Please check your inbox and spam folder.',
       });
     } finally {
       setIsResetting(false);

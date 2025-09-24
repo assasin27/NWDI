@@ -9,7 +9,7 @@ export const getProducts = async (categoryId?: string) => {
     .from('products')
     .select(`
       *,
-      seller:farmers (
+      admin:admin_profile (
         id,
         farm_name,
         region,
@@ -32,7 +32,7 @@ export const getProductById = async (id: string) => {
     .from('products')
     .select(`
       *,
-      seller:farmers (
+      admin:admin_profile (
         id,
         farm_name,
         region,
@@ -147,7 +147,7 @@ export const getUserProfile = async (userId: string) => {
     .select(
       `
       *,
-      seller_profile:seller_profiles (
+      admin_profile:admin_profile (
         id,
         farm_name,
         description,

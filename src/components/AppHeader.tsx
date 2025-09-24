@@ -19,9 +19,9 @@ export default function AppHeader({ onCartClick }: { onCartClick?: () => void })
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data?.user || null);
-      setProfileName(data?.user?.user_metadata?.name || "");
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data?.session?.user || null);
+      setProfileName(data?.session?.user?.user_metadata?.name || "");
     });
   }, []);
 

@@ -155,7 +155,7 @@ const NavBar: React.FC = () => {
               variant="outline"
               className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 shadow-md hover:shadow-lg transition-all duration-300"
             >
-              <Link to="/farmer/login">
+              <Link to="/admin">
                 <Package className="w-4 h-4 mr-2" />
                 Farmer Portal
               </Link>

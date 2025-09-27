@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './hooks/useCart';
 import { WishlistProvider } from './hooks/useWishlist';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { AuthProvider } from './contexts/AuthContext';
 import errorHandler from './lib/errorHandler';
 
 // Lazy load components for better performance
@@ -16,7 +17,11 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const Orders = React.lazy(() => import('./pages/Orders'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 const CustomerPortal = React.lazy(() => import('./pages/customer/CustomerPortal'));
-import FarmerPortal from './pages/farmer/FarmerPortal';
+const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
+const AnalyticsDashboard = React.lazy(() => import('./pages/admin/components/AnalyticsDashboard'));
+const ProductsList = React.lazy(() => import('./pages/admin/components/ProductsList'));
+const ProductForm = React.lazy(() => import('./pages/admin/components/ProductForm'));
+const OrdersList = React.lazy(() => import('./pages/admin/components/OrdersList'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -74,27 +79,42 @@ function App() {
   return (
     <ErrorBoundary>
       <NotificationProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <CartProvider>
-            <WishlistProvider>
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/wishlist" element={<Wishlist />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/orders" element={<Orders />} />
-                  <Route path="/customer/*" element={<CustomerPortal />} />
-                  <Route path="/farmer/*" element={<FarmerPortal />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </React.Suspense>
-            </WishlistProvider>
-          </CartProvider>
-        </Router>
+        <AuthProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <CartProvider>
+              <WishlistProvider>
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/wishlist" element={<Wishlist />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/customer/*" element={<CustomerPortal />} />
+                    <Route path="/admin" element={<AdminLayout />}>
+                      <Route index element={<AnalyticsDashboard />} />
+                      <Route path="dashboard" element={<AnalyticsDashboard />} />
+                      <Route path="products">
+                        <Route index element={<ProductsList />} />
+                        <Route path="new" element={<ProductForm />} />
+                        <Route path=":id" element={<ProductForm />} />
+                        <Route path=":id/edit" element={<ProductForm />} />
+                      </Route>
+                      <Route path="orders">
+                        <Route index element={<OrdersList />} />
+                      </Route>
+                      <Route path="analytics" element={<AnalyticsDashboard />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </React.Suspense>
+              </WishlistProvider>
+            </CartProvider>
+          </Router>
+        </AuthProvider>
       </NotificationProvider>
     </ErrorBoundary>
   );

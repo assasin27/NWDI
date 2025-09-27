@@ -31,9 +31,9 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'FarmFresh API',
+      title: 'NWDI API',
       version: '1.0.0',
-      description: 'API documentation for FarmFresh e-commerce platform',
+      description: 'API documentation for NWDI e-commerce platform',
     },
     servers: [
       {

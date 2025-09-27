@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { apiService } from '../lib/apiService';
-import { useToast } from '../components/ui/use-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../hooks/use-toast';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { signIn, loading: authLoading, error: authError, role } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Get the redirect path from location state or default to homepage
+  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +29,7 @@ const Login: React.FC = () => {
     setSuccess('');
 
     try {
-      const { data, error } = await apiService.login(email, password);
+      const { error } = await signIn(email, password);
 
       if (error) {
         setError(error);
@@ -39,8 +44,16 @@ const Login: React.FC = () => {
           title: 'Login Successful',
           description: 'You have been logged in successfully.'
         });
+
+        // Role-based redirect after successful login
         setTimeout(() => {
-          navigate('/');
+          if (role === 'farmer' || role === 'admin') {
+            // Redirect admin/farmer to admin dashboard
+            navigate('/admin/dashboard');
+          } else {
+            // Redirect customers to homepage or intended page
+            navigate(from === '/admin' ? '/' : from);
+          }
         }, 1000);
       }
     } catch (err) {
@@ -122,10 +135,10 @@ const Login: React.FC = () => {
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || authLoading}
             className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-2 px-4 rounded-md shadow-md hover:shadow-lg transition-all duration-300"
           >
-            {loading ? (
+            {(loading || authLoading) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Signing in...

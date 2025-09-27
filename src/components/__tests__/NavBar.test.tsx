@@ -47,7 +47,7 @@ describe('NavBar Component', () => {
   describe('Rendering', () => {
     test('renders logo and brand name', () => {
       renderNavBar();
-      expect(screen.getByText('FarmFresh')).toBeInTheDocument();
+      expect(screen.getByText('NWDI')).toBeInTheDocument();
     });
 
     test('renders navigation links', () => {

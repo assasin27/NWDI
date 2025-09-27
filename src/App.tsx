@@ -76,6 +76,138 @@ class ErrorBoundary extends React.Component<
 }
 
 function App() {
+  // One-time alert and Google Translate widget loader
+  React.useEffect(() => {
+    // Show alert once per session
+    try {
+      const key = 'langAlertShown';
+      if (!sessionStorage.getItem(key)) {
+        alert('You can select the language according to your preference');
+        sessionStorage.setItem(key, '1');
+      }
+    } catch {}
+
+    // Persistently shift page based on actual translation state
+    const updateShiftFromCookie = () => {
+      try {
+        // Prefer the real Google combo value if available
+        const combo = document.querySelector<HTMLSelectElement>('#google_translate_element select, .goog-te-combo');
+        let isTranslated = false;
+
+        if (combo && combo.value) {
+          isTranslated = combo.value !== 'en';
+        } else {
+          // Fallback to cookie if combo not yet present
+          const m = document.cookie.match(/googtrans=\/[^/]+\/([^;]+)/);
+          const cookieLang: string | null = m?.[1] ?? null; // null => cookie not set
+          isTranslated = cookieLang !== null ? cookieLang !== 'en' : false;
+
+          // Sync localStorage with cookie if cookie is present; clear if not
+          if (cookieLang !== null) {
+            if (cookieLang !== 'en') { try { localStorage.setItem('gtShiftActive', '1'); } catch {} }
+            else { try { localStorage.removeItem('gtShiftActive'); } catch {} }
+          } else {
+            try { localStorage.removeItem('gtShiftActive'); } catch {}
+          }
+        }
+
+        if (isTranslated) document.documentElement.classList.add('gt-shifted');
+        else document.documentElement.classList.remove('gt-shifted');
+      } catch {}
+    };
+    updateShiftFromCookie();
+    const shiftTimer = window.setInterval(updateShiftFromCookie, 1500);
+
+    // Remove Google's overlay frames/balloons if they appear (without affecting translation)
+    const removeGoogleOverlays = () => {
+      const selectors = [
+        'iframe.goog-te-banner-frame',
+        '.goog-te-banner-frame',
+        '#goog-gt-tt',
+        'iframe.goog-te-balloon-frame',
+        '.goog-te-balloon-frame',
+        'iframe.goog-te-menu-frame',
+        '.goog-te-menu-frame',
+      ];
+      document.querySelectorAll(selectors.join(',')).forEach((el) => {
+        try { el.parentElement?.removeChild(el); } catch {}
+      });
+      // As an extra guard, strip any table rows/cells inside tooltip container if it somehow persists
+      const tip = document.getElementById('goog-gt-tt');
+      if (tip) {
+        tip.querySelectorAll('table, tr, td').forEach((n) => {
+          try { (n as HTMLElement).remove(); } catch {}
+        });
+        try { tip.remove(); } catch {}
+      }
+    };
+
+    // Observe DOM to remove overlays added later
+    const observer = new MutationObserver(() => removeGoogleOverlays());
+    try {
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    } catch {}
+
+    // Initial pass
+    removeGoogleOverlays();
+
+    // Define the global init callback required by Google's script
+    (window as any).googleTranslateElementInit = () => {
+      const g: any = (window as any).google;
+      if (!g || !g.translate) return;
+
+      const initOnce = () => {
+        // Avoid duplicate initialization and ensure container exists
+        if (document.getElementById('gt-el-loaded')) return true;
+        const container = document.getElementById('google_translate_element');
+        if (!container) return false;
+        new g.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            // Allowed: English (original), Hindi, Marathi, Gujarati
+            includedLanguages: 'en,hi,mr,gu',
+            layout: g.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false,
+          },
+          'google_translate_element'
+        );
+        const marker = document.createElement('meta');
+        marker.id = 'gt-el-loaded';
+        document.head.appendChild(marker);
+        return true;
+      };
+
+      if (!initOnce()) {
+        // Retry for a short period until the container is mounted
+        let attempts = 0;
+        const timer = setInterval(() => {
+          attempts += 1;
+          if (initOnce() || attempts > 20) {
+            clearInterval(timer);
+          }
+        }, 150);
+      }
+    };
+
+    // Inject the Google Translate script once
+    if (!document.getElementById('google-translate-script')) {
+      const s = document.createElement('script');
+      s.id = 'google-translate-script';
+      s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+      s.async = true;
+      document.body.appendChild(s);
+    } else {
+      // If already present (e.g., due to HMR), try initializing again
+      (window as any).googleTranslateElementInit?.();
+    }
+
+    // Cleanup observer and timers on unmount
+    return () => {
+      try { observer.disconnect(); } catch {}
+      try { window.clearInterval(shiftTimer); } catch {}
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <NotificationProvider>

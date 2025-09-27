@@ -356,7 +356,12 @@ const ProductsSection: React.FC = () => {
               <SelectContent>
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
-                    {(category as string).charAt(0).toUpperCase() + (category as string).slice(1)}
+                    <div className="flex items-center gap-2">
+                      {category !== 'all' && (
+                        <span className="text-sm">{category}</span>
+                      )}
+                      <span>{(category as string).charAt(0).toUpperCase() + (category as string).slice(1)}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -404,7 +409,6 @@ const ProductsSection: React.FC = () => {
               </Badge>
             )}
             <Badge variant="outline" className="flex items-center gap-1">
-              {getSortIcon(sortBy)}
               {getSortLabel(sortBy)}
             </Badge>
           </div>

@@ -60,12 +60,12 @@ export default function AppHeader({ onCartClick }: { onCartClick?: () => void })
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">N</span>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center">
+              <img src="/src/assets/logo.svg" alt="Nareshwadi Logo" className="w-full h-full" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-primary">Nareshwadi</h1>
-              <p className="text-xs text-muted-foreground font-script">Fresh from farm</p>
+              <p className="text-xs text-muted-foreground font-script">Farm</p>
             </div>
           </div>
 

@@ -59,8 +59,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Fetch user profile from the database
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      // First try to fetch from admin_profile
-      let { data: farmerProfile, error: farmerError } = await supabase
+      // First check if user is an admin
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError) throw userError;
+
+      if (userData?.is_admin) {
+        return {
+          id: userData.id,
+          user_id: userData.id,
+          full_name: userData.first_name ? 
+            `${userData.first_name} ${userData.last_name || ''}`.trim() : 'Admin User',
+          email: userData.email,
+          role: 'admin' as UserRole,
+          created_at: userData.created_at || new Date().toISOString(),
+          updated_at: userData.updated_at || new Date().toISOString(),
+        };
+      }
+
+      // If not admin, check for farmer profile
+      const { data: farmerProfile, error: farmerError } = await supabase
         .from('admin_profile')
         .select('*')
         .eq('user_id', userId)
@@ -79,13 +101,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // If not a farmer, try regular profiles
-      const { data: userProfile, error: userError } = await supabase
+      const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (userError) {
+      if (profileError) {
+        // If no profile exists, create a basic one from user data
+        if (userData) {
+          return {
+            id: userData.id,
+            user_id: userData.id,
+            full_name: userData.first_name ? 
+              `${userData.first_name} ${userData.last_name || ''}`.trim() : 'User',
+            email: userData.email,
+            phone: userData.phone || '',
+            address: userData.address || '',
+            role: 'buyer' as UserRole,
+            created_at: userData.created_at || new Date().toISOString(),
+            updated_at: userData.updated_at || new Date().toISOString(),
+          };
+        }
         return null;
       }
       return userProfile as UserProfile;
@@ -98,10 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Update the auth state
   const updateAuthState = useCallback(async (session: Session | null) => {
     try {
-      console.log('Updating auth state with session:', session?.user?.id);
-      
       if (!session?.user) {
-        console.log('No session or user, setting guest state');
         setState({
           user: null,
           profile: null,
@@ -114,45 +148,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      console.log('Checking for admin profile');
-      // First check for admin profile
-      const { data: farmerProfile, error: farmerError } = await supabase
-        .from('admin_profile')
+      // Get user data including is_admin flag
+      const { data: userData, error: userError } = await supabase
+        .from('users')
         .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+        .eq('id', session.user.id)
+        .single();
 
-      if (farmerError) {
-        console.error('Error fetching admin profile:', farmerError);
-      }
+      if (userError) throw userError;
 
-      console.log('Admin profile found:', farmerProfile);
-
-      if (farmerProfile) {
-        const profile = {
-          id: farmerProfile.id,
-          user_id: farmerProfile.user_id,
-          full_name: farmerProfile.farm_name || '',
-          email: farmerProfile.contact_email,
-          role: 'farmer' as UserRole,
-          created_at: farmerProfile.created_at,
-          updated_at: farmerProfile.updated_at,
+      // If user is admin, set admin role immediately
+      if (userData?.is_admin) {
+        const adminProfile = {
+          id: session.user.id,
+          user_id: session.user.id,
+          full_name: userData.first_name ? 
+            `${userData.first_name} ${userData.last_name || ''}`.trim() : 'Admin User',
+          email: session.user.email || '',
+          role: 'admin' as UserRole,
+          created_at: userData.created_at || new Date().toISOString(),
+          updated_at: userData.updated_at || new Date().toISOString(),
         };
-        console.log('Setting farmer state with profile:', profile);
+        
         setState({
           user: session.user,
-          profile,
+          profile: adminProfile,
           session,
           loading: false,
           error: null,
           isAuthenticated: true,
-          role: 'farmer',
+          role: 'admin',
         });
         return;
       }
 
-      console.log('No farmer profile found, checking regular profile');
-      // If not a farmer, get regular profile
+      // For non-admin users, proceed with regular flow
       const profile = await fetchUserProfile(session.user.id) || {
         ...DEFAULT_USER_PROFILE,
         user_id: session.user.id,

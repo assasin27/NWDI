@@ -60,18 +60,18 @@ export const cartService = {
     }
   },
 
-  // Add item to cart
+  // Add item to cart (uses UUID product_id; variants tracked in selectedVariant JSONB)
   async addToCart(userId: string, item: Omit<CartItem, 'user_id' | 'quantity' | 'product_id'>, quantity: number = 1): Promise<boolean> {
     try {
-      // Check if item already exists in cart (using the unique variant ID)
+      // Check if item already exists in cart (same product UUID and same variant, if any)
       const { data: existing, error: checkError } = await supabase
         .from('cart_items')
         .select('*')
         .eq('user_id', userId)
-        .eq('product_id', item.id) // Use the unique variant ID for checking
+        .eq('product_id', item.id)
         .single();
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      if (checkError && checkError.code !== 'PGRST116' && (checkError as any).status !== 406) { // treat 406 as not found
         errorHandler.handleError(checkError, 'CartService.addToCart.check');
         return false;
       }
@@ -82,7 +82,7 @@ export const cartService = {
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('user_id', userId)
-          .eq('product_id', item.id); // Use unique variant ID
+          .eq('product_id', item.id);
         
         if (error) {
           errorHandler.handleError(error, 'CartService.addToCart.update');
@@ -93,15 +93,14 @@ export const cartService = {
         const cartItemData = {
           name: item.name,
           price: item.price,
-          image: item.image,
-          category: item.category,
-          description: item.description,
+          image: item.image || '',
+          category: item.category || 'Misc',
+          description: item.description || '',
           user_id: userId, 
           quantity,
-          product_id: item.id, // Store the unique variant ID
+          product_id: item.id, // UUID product id
           is_organic: item.is_organic || false,
-          in_stock: item.in_stock || true,
-          selectedVariant: item.selectedVariant // Re-enabled now that column exists
+          in_stock: item.in_stock || true
         };
         
         const { error } = await supabase
@@ -121,14 +120,14 @@ export const cartService = {
     }
   },
 
-  // Remove item from cart
-  async removeFromCart(userId: string, itemId: string): Promise<boolean> {
+  // Remove item from cart (removes by product UUID and optional variant)
+  async removeFromCart(userId: string, itemId: string, variantName?: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('cart_items')
         .delete()
         .eq('user_id', userId)
-        .eq('product_id', itemId); // Use the unique variant ID
+        .eq('product_id', itemId);
       
       if (error) {
         errorHandler.handleError(error, 'CartService.removeFromCart');
@@ -143,13 +142,13 @@ export const cartService = {
   },
 
   // Update quantity
-  async updateQuantity(userId: string, itemId: string, quantity: number): Promise<boolean> {
+  async updateQuantity(userId: string, itemId: string, quantity: number, variantName?: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('cart_items')
         .update({ quantity })
         .eq('user_id', userId)
-        .eq('product_id', itemId); // Use the unique variant ID
+        .eq('product_id', itemId);
       
       if (error) {
         errorHandler.handleError(error, 'CartService.updateQuantity');

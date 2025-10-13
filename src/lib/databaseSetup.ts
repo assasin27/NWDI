@@ -10,9 +10,9 @@ export const databaseSetup = {
       const { data: cartData, error: cartError } = await supabase
         .rpc('get_table_info', { table_name: 'cart_items' });
       
-      // Check if wishlist_items table exists
+      // Check if wishlist table exists
       const { data: wishlistData, error: wishlistError } = await supabase
-        .rpc('get_table_info', { table_name: 'wishlist_items' });
+        .rpc('get_table_info', { table_name: 'wishlist' });
 
       // Check if orders table exists
       const { data: ordersData, error: ordersError } = await supabase
@@ -44,11 +44,11 @@ export const databaseSetup = {
         }
       }
       
-      // Create wishlist_items table if it doesn't exist
+      // Create wishlist table if it doesn't exist
       if (!wishlistData || wishlistData.length === 0 || wishlistError) {
-        console.log('wishlist_items table does not exist. Creating table...');
+        console.log('wishlist table does not exist. Creating table...');
         const { error: createWishlistError } = await supabase
-          .rpc('create_wishlist_items_table');
+          .rpc('create_wishlist_table');
         
         if (createWishlistError) {
           console.error('Failed to create wishlist_items table:', createWishlistError);
@@ -155,16 +155,16 @@ export const databaseSetup = {
         console.log('cart_items table is accessible');
       }
 
-      // Check wishlist_items table
+      // Check wishlist table
       const { data: wishlistData, error: wishlistError } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('*')
         .limit(1);
       
       if (wishlistError) {
-        console.error('Error accessing wishlist_items table:', wishlistError);
+        console.error('Error accessing wishlist table:', wishlistError);
       } else {
-        console.log('wishlist_items table is accessible');
+        console.log('wishlist table is accessible');
       }
 
       // Check orders table

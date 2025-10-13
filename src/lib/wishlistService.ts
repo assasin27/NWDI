@@ -22,7 +22,7 @@ export const wishlistService = {
     try {
       console.log('Testing wishlist database connection...');
       const { data, error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('count')
         .limit(1);
       
@@ -43,7 +43,7 @@ export const wishlistService = {
   async getWishlistItems(userId: string): Promise<WishlistItem[]> {
     try {
       const { data, error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('*')
         .eq('user_id', userId);
       
@@ -59,23 +59,18 @@ export const wishlistService = {
     }
   },
 
-  // Add item to wishlist
+  // Add item to wishlist (uses UUID product_id; variants tracked in selectedVariant JSONB)
   async addToWishlist(userId: string, item: Omit<WishlistItem, 'user_id' | 'product_id'>): Promise<boolean> {
     try {
-      // Create a unique ID for the wishlist item that includes the variant
-      const uniqueWishlistItemId = item.selectedVariant 
-        ? `${item.id}-${item.selectedVariant.name}` 
-        : item.id;
-
-      // Check if item already exists in wishlist
+      // Check if item already exists in wishlist for the same product and variant (if any)
       const { data: existing, error: checkError } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .select('*')
         .eq('user_id', userId)
-        .eq('product_id', uniqueWishlistItemId) // Use unique variant ID
+        .eq('product_id', item.id)
         .single();
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      if (checkError && checkError.code !== 'PGRST116' && (checkError as any).status !== 406) { // treat 406 as not found
         errorHandler.handleError(checkError, 'WishlistService.addToWishlist.check');
         return false;
       }
@@ -89,18 +84,17 @@ export const wishlistService = {
       const wishlistItemData = {
         name: item.name,
         price: item.price,
-        image: item.image,
-        category: item.category,
-        description: item.description,
+        image: item.image || '',
+        category: item.category || 'Misc',
+        description: item.description || '',
         user_id: userId,
-        product_id: uniqueWishlistItemId, // Use unique variant ID
+        product_id: item.id, // UUID product id
         is_organic: item.is_organic || false,
-        in_stock: item.in_stock || true,
-        selectedVariant: item.selectedVariant // Re-enabled now that column exists
+        in_stock: item.in_stock || true
       };
       
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .insert([wishlistItemData]);
       
       if (error) {
@@ -115,11 +109,11 @@ export const wishlistService = {
     }
   },
 
-  // Remove item from wishlist
-  async removeFromWishlist(userId: string, itemId: string): Promise<boolean> {
+  // Remove item from wishlist (removes by product UUID only; caller should pass correct variant if needed)
+  async removeFromWishlist(userId: string, itemId: string, variantName?: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .delete()
         .eq('user_id', userId)
         .eq('product_id', itemId);
@@ -140,7 +134,7 @@ export const wishlistService = {
   async clearWishlist(userId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('wishlist_items')
+        .from('wishlist')
         .delete()
         .eq('user_id', userId);
       

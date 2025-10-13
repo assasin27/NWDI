@@ -2,10 +2,23 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Heart, ShoppingCart, Loader2 } from 'lucide-react';
-import { Product } from '../lib/productsData';
+
+// Minimal product shape that supports both local/static and Supabase-backed products
+interface DisplayProduct {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  category?: string;
+  description?: string;
+  inStock?: boolean;      // old local data flag
+  in_stock?: boolean;     // Supabase column
+  variants?: Array<{ name: string; price: number }>;
+  selectedVariant?: { name: string; price: number };
+}
 
 interface ProductCardProps {
-  product: Product;
+  product: DisplayProduct;
   onAddToCart: () => void;
   onAddToWishlist: () => void;
   onRemoveFromWishlist: () => void;
@@ -24,6 +37,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   impactBadge
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  const isInStock = (product.inStock ?? product.in_stock ?? true) as boolean;
 
   const getHintText = () => {
     if (product.variants) {
@@ -59,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300"
         />
-        {!product.inStock && (
+        {!isInStock && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <Badge variant="destructive" className="text-white">
               Out of Stock
@@ -97,7 +112,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center gap-2">
           <Button
             onClick={onAddToCart}
-            disabled={loading || !product.inStock}
+            disabled={loading || !isInStock}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             size="sm"
           >

@@ -10,7 +10,8 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, ShoppingCart, Heart } from 'lucide-react';
-import { products, Product, ProductVariant } from '../lib/productsData';
+import { Product, productService } from '../lib/productService';
+import { ProductVariant } from '../lib/productsData';
 import heroFarm from '../assets/hero-farm.jpg';
 import fruitsImg from '../assets/fruits.jpg';
 import vegetablesImg from '../assets/vegetables.jpg';
@@ -22,8 +23,8 @@ const ProductsSection: React.FC = () => {
   const { user, loading: userLoading } = useSupabaseUser();
   const { showNotification } = useNotification();
   
-  const [productsList, setProductsList] = useState<Product[]>(products);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('category');
@@ -34,7 +35,11 @@ const ProductsSection: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [variantAction, setVariantAction] = useState<'cart' | 'wishlist' | null>(null);
 
-  const categories = ['all', ...Array.from(new Set(productsList.map(p => p.category)))];
+  const categories = ['all', ...Array.from(new Set(
+    productsList
+      .map(p => (p && p.category) ? p.category : 'Uncategorized')
+      .filter(Boolean)
+  ))];
   
   // Define category order for sorting
   const categoryOrder = ['Fruits', 'Vegetables', 'Dairy', 'Grains', 'Eco Friendly Products', 'Handmade Warli Painted'];
@@ -45,14 +50,14 @@ const ProductsSection: React.FC = () => {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.description || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+      filtered = filtered.filter(product => (product.category || 'Uncategorized') === selectedCategory);
     }
 
     // Sort products
@@ -65,15 +70,15 @@ const ProductsSection: React.FC = () => {
         case 'category':
         default: {
           // Sort by category order first, then by name within each category
-          const aCategoryIndex = categoryOrder.indexOf(a.category);
-          const bCategoryIndex = categoryOrder.indexOf(b.category);
+          const aCategoryIndex = categoryOrder.indexOf(a.category || 'Uncategorized');
+          const bCategoryIndex = categoryOrder.indexOf(b.category || 'Uncategorized');
           
           if (aCategoryIndex !== bCategoryIndex) {
             return aCategoryIndex - bCategoryIndex;
           }
           
           // If same category, sort by name
-          return a.name.localeCompare(b.name);
+          return (a.name || '').localeCompare(b.name || '');
         }
       }
     });
@@ -84,6 +89,17 @@ const ProductsSection: React.FC = () => {
   useEffect(() => {
     filterAndSortProducts();
   }, [filterAndSortProducts]);
+
+  // Load products from Supabase so IDs are UUID
+  useEffect(() => {
+    (async () => {
+      const data = await productService.getAllProducts();
+      if (data && Array.isArray(data)) {
+        setProductsList(data);
+        setFilteredProducts(data);
+      }
+    })();
+  }, []);
 
   const handleSortChange = (newSortBy: string) => {
     setSortBy(newSortBy);
@@ -198,12 +214,12 @@ const ProductsSection: React.FC = () => {
     try {
       await removeFromWishlist(productId);
       // Find the product name for the notification
-      const product = products.find(p => p.id === productId);
+      const product = productsList.find(p => p.id === productId);
       const productName = product ? product.name : 'Item';
       showNotification(`${productName} removed from wishlist`, 'info');
     } catch (error) {
       // Find the product name for the error notification
-      const product = products.find(p => p.id === productId);
+      const product = productsList.find(p => p.id === productId);
       const productName = product ? product.name : 'Item';
       showNotification(`Failed to remove ${productName} from wishlist`, 'error');
     } finally {

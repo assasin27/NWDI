@@ -42,10 +42,16 @@ const ProductsSection: React.FC = () => {
           id: p.id,
           name: p.name || 'Unnamed Product',
           price: Number(p.price || 0),
-          image: p.image_url || '',
+          image: p.image || p.image_url || '',
+          image_url: p.image_url || p.image || '',
           category: p.category || 'Uncategorized',
           description: p.description || '',
-          inStock: p.stock_quantity > 0
+          isOrganic: p.is_organic ?? false,
+          inStock: p.inStock ?? p.in_stock ?? (p.quantity && p.quantity > 0),
+          in_stock: p.in_stock ?? p.inStock ?? (p.quantity && p.quantity > 0),
+          quantity: p.quantity ?? 1,
+          selectedVariant: p.selectedVariant,
+          variants: p.variants ?? []
         }));
         
         console.log('Fetched products from Supabase:', mapped);

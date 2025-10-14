@@ -57,13 +57,12 @@ export const cartService = {
   // Add item to cart
   async addToCart(userId: string, productId: string, quantity: number = 1, variant?: ProductVariant): Promise<{ success: boolean; message: string; item?: CartItem }> {
     try {
-      const response = await apiService.addToCart(userId, productId, quantity, variant);
-      
+      // Accept full product object
+      const response = await apiService.addToCart(productId);
       if (response.error) {
         errorHandler.handleError(response.error, 'CartService.addToCart');
         return { success: false, message: 'Failed to add item to cart' };
       }
-      
       return { 
         success: true, 
         message: response.isUpdate ? 'Cart item updated' : 'Item added to cart', 

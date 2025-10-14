@@ -72,19 +72,26 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       errorHandler.handleError('User not authenticated', 'useCart.addToCart');
       return false;
     }
-    
     setLoading(true);
     try {
-      // Call cartService.addToCart with the correct parameters
-      const result = await cartService.addToCart(
-        user.id,
-        item.id,
-        1, // Default quantity
-        item.selectedVariant
-      );
-      
+      // Pass full product object to cartService
+      const result = await cartService.addToCart({
+        product_id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        category: item.category,
+        description: item.description,
+        is_organic: item.isOrganic,
+        in_stock: item.inStock,
+        quantity: 1,
+        selectedVariant: item.selectedVariant,
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
       if (result.success) {
-        await loadCart(); // Reload cart to get updated state
+        await loadCart();
       }
       return result.success;
     } catch (error) {

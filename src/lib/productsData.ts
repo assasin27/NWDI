@@ -8,9 +8,13 @@ export interface Product {
   name: string;
   price: number;
   image: string;
+  image_url?: string;
   category: string;
   description: string;
-  inStock: boolean;
+  inStock?: boolean;
+  in_stock?: boolean;
+  quantity?: number;
+  is_organic?: boolean;
   variants?: ProductVariant[];
   selectedVariant?: ProductVariant;
 }

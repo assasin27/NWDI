@@ -51,13 +51,16 @@ export interface OrderData {
 }
 
 // Logger for production environment
-const logger = {
+const logger: { error: (message: string, error?: any) => void; info: (message: string, data?: any) => void; warn: (message: string, data?: any) => void } = {
   error(message: string, error?: any) {
     console.error(`[ERROR] ${message}`, error);
     performanceMetrics.errorCount++;
   },
   info(message: string, data?: any) {
     console.log(`[INFO] ${message}`, data || '');
+  },
+  warn(message: string, data?: any) {
+    console.warn(`[WARN] ${message}`, data || '');
   }
 };
 
@@ -806,43 +809,33 @@ private async getOrCreateFarmerProfile(
     }
   }
 
-  async addToCart(userId: string, productId: string, quantity: number = 1, variant?: any): Promise<ApiResponse<any>> {
+  async addToCart(product: any): Promise<ApiResponse<any>> {
     try {
       // Check if item already exists in cart
       const { data: existingItems, error: fetchError } = await supabase
         .from('cart_items')
         .select('*')
-        .eq('product_id', productId)
-        .eq('user_id', userId);
-      
+        .eq('product_id', product.product_id)
+        .eq('user_id', product.user_id);
       if (fetchError) throw fetchError;
-
       if (existingItems && existingItems.length > 0) {
         // Update quantity if item exists
         const { data, error } = await supabase
           .from('cart_items')
           .update({ 
-            quantity: (existingItems[0].quantity || 1) + quantity,
+            quantity: (existingItems[0].quantity || 1) + (product.quantity || 1),
             updated_at: new Date().toISOString()
           })
           .eq('id', existingItems[0].id)
           .select();
-        
         if (error) throw error;
         return { data: data?.[0], success: true, isUpdate: true };
       } else {
-        // Add new item to cart
+        // Add new item to cart with all required fields
         const { data, error } = await supabase
           .from('cart_items')
-          .insert([{ 
-            product_id: productId,
-            user_id: userId,
-            quantity: quantity,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
+          .insert([product])
           .select();
-        
         if (error) throw error;
         return { data: data?.[0], success: true, isUpdate: false };
       }

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { mockProducts } from '@/lib/mockData';
 
 interface Product {
   id: string;
@@ -37,26 +38,7 @@ const ProductsList = () => {
       // setProducts(data);
       
       // Mock data for now
-      setProducts([
-        {
-          id: '1',
-          name: 'Organic Apples',
-          price: 120,
-          quantity: 50,
-          category: 'Fruits',
-          in_stock: true,
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          name: 'Fresh Milk',
-          price: 60,
-          quantity: 5,
-          category: 'Dairy',
-          in_stock: true,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      setProducts(mockProducts);
     } catch (error) {
       toast({
         title: 'Error',

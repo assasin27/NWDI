@@ -59,7 +59,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-300"
         />
-        {!product.inStock && (
+        {!(product.inStock ?? product.in_stock) && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <Badge variant="destructive" className="text-white">
               Out of Stock
@@ -97,7 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center gap-2">
           <Button
             onClick={onAddToCart}
-            disabled={loading || !product.inStock}
+            disabled={loading || !(product.inStock ?? product.in_stock)}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             size="sm"
           >

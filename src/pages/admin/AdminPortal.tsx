@@ -1,22 +1,100 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Outlet } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import React from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { toast } from 'sonner';
+
+// Lazy loaded components
+const OrdersManagement = React.lazy(() => import('@/pages/admin/modules/orders/OrdersManagement'));
+const InventoryManagement = React.lazy(() => import('@/pages/admin/modules/inventory/InventoryManagement'));
+const Analytics = React.lazy(() => import('@/pages/admin/modules/analytics/Analytics'));
+const Settings = React.lazy(() => import('@/pages/admin/modules/settings/Settings'));
+const UserManagement = React.lazy(() => import('@/pages/admin/modules/users/UserManagement'));
+const Sidebar = () => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      toast.error('Failed to sign out');
+    }
+  };
+
+  const menuItems = [
+    { name: 'Orders', path: '/admin/orders' },
+    { name: 'Inventory', path: '/admin/inventory' },
+    { name: 'Analytics', path: '/admin/analytics' },
+    { name: 'Users', path: '/admin/users' },
+    { name: 'Settings', path: '/admin/settings' },
+  ];
+
+  return (
+    <div className="pb-12 min-h-screen">
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-lg font-semibold">
+            Admin Portal
+          </h2>
+          <div className="space-y-1">
+            {menuItems.map((item) => (
+              <Button
+                key={item.path}
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => navigate(item.path)}
+              >
+                {item.name}
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-100"
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Header = () => {
+  return (
+    <div className="border-b">
+      <div className="flex h-16 items-center px-4">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" className="md:hidden">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0">
+            <Sidebar />
+          </SheetContent>
+        </Sheet>
+        <div className="flex items-center justify-between w-full">
+          <h2 className="text-lg font-semibold">Nareshwadi Admin</h2>
+          <div className="flex items-center space-x-4">
+            {/* Add any header actions here */}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminPortal = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
 
-  useEffect(() => {
-    if (!loading && (!user || !user.is_admin)) {
-      navigate('/login', { state: { from: '/admin' } });
-    }
-  }, [user, loading, navigate]);
-
+  // Check authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -25,102 +103,50 @@ const AdminPortal = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <Button variant="outline" onClick={() => navigate('/')}>
-            Back to Store
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <Tabs 
-          defaultValue="dashboard" 
-          className="space-y-4"
-          onValueChange={setActiveTab}
-        >
-          <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-4">
-            <DashboardOverview />
-          </TabsContent>
-          
-          <TabsContent value="products">
-            <Outlet />
-          </TabsContent>
-          
-          <TabsContent value="orders">
-            <Outlet />
-          </TabsContent>
-          
-          <TabsContent value="analytics">
-            <Outlet />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
-  );
-};
-
-const DashboardOverview = () => {
-  // In a real implementation, fetch these from your API
-  const stats = [
-    { name: 'Total Products', value: '0', change: '+0%', changeType: 'increase' },
-    { name: 'Orders Today', value: '0', change: '0%', changeType: 'neutral' },
-    { name: 'Revenue (MTD)', value: '₹0', change: '+0%', changeType: 'increase' },
-    { name: 'Low Stock Items', value: '0', change: '0', changeType: 'neutral' },
-  ];
+  if (!user || !user.email) {
+    navigate('/login');
+    return null;
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.name}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {stat.change} from last period
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="min-h-screen">
+      <div className="md:hidden">
+        <Header />
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Latest 5 orders from customers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">No recent orders</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Low Stock Items</CardTitle>
-            <CardDescription>Items that need restocking</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">No low stock items</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex">
+        <aside className="hidden md:flex w-64 flex-col border-r min-h-screen">
+          <Sidebar />
+        </aside>
+        <main className="flex-1">
+          <div className="hidden md:block">
+            <Header />
+          </div>
+          <div className="p-8">
+            <React.Suspense
+              fallback={
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              }
+            >
+              <Routes>
+                <Route
+                  path="/"
+                  element={<Navigate to="/admin/orders" replace />}
+                />
+                <Route path="/orders" element={<OrdersManagement />} />
+                <Route path="/inventory" element={<InventoryManagement />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route
+                  path="*"
+                  element={<Navigate to="/admin/orders" replace />}
+                />
+              </Routes>
+            </React.Suspense>
+          </div>
+        </main>
       </div>
     </div>
   );

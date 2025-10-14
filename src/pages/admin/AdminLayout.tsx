@@ -13,16 +13,16 @@ const navigation = [
 ];
 
 const AdminLayout = () => {
-  const { user, role, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Redirect to homepage if customer, or to login if not authenticated
+  // Redirect to login if not authenticated, or to homepage if not admin
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (role === 'guest' || (role !== 'farmer' && role !== 'admin')) {
+  if (user.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
@@ -42,7 +42,7 @@ const AdminLayout = () => {
             </Button>
             <h1 className="text-xl font-semibold">Admin Panel</h1>
           </div>
-          <Button variant="outline" onClick={signOut} size="sm">
+          <Button variant="outline" onClick={logout} size="sm">
             Logout
           </Button>
         </div>
@@ -99,7 +99,7 @@ const AdminLayout = () => {
                     {user?.email}
                   </p>
                   <button
-                    onClick={signOut}
+                    onClick={logout}
                     className="text-xs font-medium text-gray-500 hover:text-gray-700"
                   >
                     Sign out

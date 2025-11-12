@@ -7,32 +7,45 @@ export function useSupabaseUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) {
-          console.error('Error getting user:', error);
-          setUser(null);
-        } else {
-          setUser(user);
+        // First, check if there's an active session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (isMounted) {
+          if (session?.user) {
+            setUser(session.user);
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
         }
       } catch (error) {
-        console.error('Error in getUser:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
+        // AuthSessionMissingError is expected when no session exists
+        console.debug('No active session found');
+        if (isMounted) {
+          setUser(null);
+          setLoading(false);
+        }
       }
     };
 
-    getUser();
+    // Initialize auth state
+    initializeAuth();
 
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      setLoading(false);
+      if (isMounted) {
+        setUser(session?.user || null);
+        setLoading(false);
+      }
     });
 
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      subscription?.unsubscribe();
     };
   }, []);
 

@@ -13,6 +13,7 @@ interface DisplayProduct {
   description?: string;
   inStock?: boolean;      // old local data flag
   in_stock?: boolean;     // Supabase column
+  quantity?: number;      // Supabase quantity
   variants?: Array<{ name: string; price: number }>;
   selectedVariant?: { name: string; price: number };
 }
@@ -38,7 +39,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const isInStock = (product.inStock ?? product.in_stock ?? true) as boolean;
+  const isInStock = (() => {
+    if (typeof product.inStock === 'boolean') return product.inStock;
+    if (typeof product.in_stock === 'boolean') return product.in_stock;
+    if (typeof product.quantity === 'number') return product.quantity > 0;
+    return true;
+  })();
 
   const getHintText = () => {
     if (product.variants) {
@@ -99,6 +105,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
+        {product.category && (
+          <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">
+            {product.category}
+          </p>
+        )}
+
         <p className="text-gray-600 text-sm mb-3 line-clamp-2">
           {product.description}
         </p>
@@ -115,6 +127,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             disabled={loading || !isInStock}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             size="sm"
+            aria-label={isInStock ? 'Add to cart' : 'Add to cart (out of stock)'}
+            title={isInStock ? 'Add to cart' : 'This product is currently out of stock'}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -128,10 +142,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           <Button
             onClick={isWishlisted ? onRemoveFromWishlist : onAddToWishlist}
-            disabled={loading}
+            disabled={loading || !isInStock}
             variant={isWishlisted ? "destructive" : "outline"}
             size="sm"
             className="px-3"
+            aria-label={
+              !isInStock
+                ? 'Add to wishlist (out of stock)'
+                : isWishlisted
+                  ? 'Remove from wishlist'
+                  : 'Add to wishlist'
+            }
+            title={
+              !isInStock
+                ? 'This product is currently out of stock'
+                : isWishlisted
+                  ? 'Remove from wishlist'
+                  : 'Add to wishlist'
+            }
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

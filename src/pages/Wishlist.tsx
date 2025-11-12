@@ -16,11 +16,23 @@ const Wishlist: React.FC = () => {
   const { showNotification } = useNotification();
   const [clearing, setClearing] = useState(false);
 
+  const isProductInStock = (product: Product) => {
+    if (typeof (product as any).in_stock === 'boolean') return (product as any).in_stock;
+    if (typeof product.inStock === 'boolean') return product.inStock;
+    if (typeof (product as any).quantity === 'number') return (product as any).quantity > 0;
+    return true;
+  };
+
   const handleAddToCart = (product: Product) => {
     if (userLoading) return;
     
     if (!user) {
       showNotification('Please log in to add items to cart', 'error');
+      return;
+    }
+
+    if (!isProductInStock(product)) {
+      showNotification(`${product.name} is currently out of stock`, 'error');
       return;
     }
 
@@ -33,6 +45,11 @@ const Wishlist: React.FC = () => {
     
     if (!user) {
       showNotification('Please log in to add items to wishlist', 'error');
+      return;
+    }
+
+    if (!isProductInStock(product)) {
+      showNotification(`${product.name} is currently out of stock`, 'error');
       return;
     }
 

@@ -40,6 +40,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
   const { user, loading: userLoading } = useSupabaseUser();
 
+  const deriveInStock = (item: { inStock?: boolean; quantity?: number; in_stock?: boolean }) => {
+    if (typeof item.inStock === 'boolean') return item.inStock;
+    if (typeof item.in_stock === 'boolean') return item.in_stock;
+    if (typeof item.quantity === 'number') return item.quantity > 0;
+    return true;
+  };
+
   // Load cart from database when user changes
   useEffect(() => {
     if (user?.id && !userLoading) {
@@ -66,7 +73,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: item.category,
         description: item.description,
         isOrganic: item.is_organic,
-        inStock: item.in_stock,
+        inStock: deriveInStock({ in_stock: item.in_stock, quantity: item.quantity }),
         quantity: item.quantity,
         selectedVariant: item.selectedVariant // This might be undefined from database
       }));
@@ -100,7 +107,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: item.category,
         description: item.description,
         is_organic: item.isOrganic,
-        in_stock: item.inStock,
+        in_stock: deriveInStock(item),
         selectedVariant: item.selectedVariant
       };
 

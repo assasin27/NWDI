@@ -6,7 +6,16 @@ export interface Order {
   customer_name: string;
   customer_email: string;
   total_amount: number;
-  status: 'processing' | 'out_for_delivery' | 'delivered';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'processing'
+    | 'shipped'
+    | 'out_for_delivery'
+    | 'delivered'
+    | 'cancelled'
+    | 'returned';
+  shipping_address: string | Record<string, any>;
   created_at: string;
   updated_at: string;
   items: OrderItem[];
@@ -15,12 +24,113 @@ export interface Order {
 export interface OrderItem {
   id: string;
   order_id: string;
-  product_id: string;
+  product_id: string | null;
   product_name: string;
   quantity: number;
   price: number;
   created_at: string;
 }
+
+type RawOrderRecord = {
+  id: string;
+  user_id: string;
+  status: string;
+  shipping_address?: string | null;
+  created_at: string;
+  updated_at: string;
+  order_items?: Array<{
+    id: string;
+    order_id: string;
+    product_id: string | null;
+    product_name: string;
+    product_price?: number | null;
+    price?: number | null;
+    quantity?: number | null;
+    created_at: string;
+  }>;
+  user?: {
+    id: string;
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
+};
+
+const ORDER_SELECT = `
+  *,
+  user:users!orders_user_id_fkey (
+    id,
+    email,
+    first_name,
+    last_name
+  ),
+  order_items (*)
+`;
+
+const mapOrderRecord = (record: RawOrderRecord): Order => {
+  const { user, order_items: rawItems = [] } = record;
+
+  const items: OrderItem[] = rawItems.map((item) => ({
+    id: item.id,
+    order_id: item.order_id,
+    product_id: item.product_id ?? null,
+    product_name: item.product_name,
+    quantity: item.quantity ?? 0,
+    price:
+      item.product_price ??
+      item.price ??
+      0,
+    created_at: item.created_at,
+  }));
+
+  const totalAmount = items.reduce(
+    (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0),
+    0
+  );
+
+  const shippingAddressRaw = record.shipping_address ?? '';
+  let shippingAddress: string | Record<string, any> = shippingAddressRaw || 'Not Provided';
+
+  if (typeof shippingAddressRaw === 'string') {
+    try {
+      const parsed = JSON.parse(shippingAddressRaw);
+      shippingAddress = parsed;
+    } catch {
+      shippingAddress = shippingAddressRaw || 'Not Provided';
+    }
+  }
+
+  let addressDerivedName = '';
+  let addressDerivedEmail = '';
+  if (shippingAddress && typeof shippingAddress === 'object' && !Array.isArray(shippingAddress)) {
+    const addrObj = shippingAddress as Record<string, any>;
+    addressDerivedName =
+      addrObj.name ||
+      addrObj.fullName ||
+      addrObj.contact_name ||
+      addrObj.recipient ||
+      [addrObj.houseBuilding, addrObj.street, addrObj.city].filter(Boolean).join(', ');
+    addressDerivedEmail = addrObj.email || addrObj.contact_email || '';
+  }
+
+  const userName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
+  const userEmail = user?.email || '';
+
+  const customerName = userName || userEmail || addressDerivedName || 'Customer';
+
+  return {
+    id: record.id,
+    customer_id: record.user_id,
+    customer_name: customerName,
+    customer_email: userEmail || addressDerivedEmail || '',
+    total_amount: totalAmount,
+    status: (record.status as Order['status']) || 'pending',
+    shipping_address: shippingAddress,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    items,
+  };
+};
 
 export const orderService = {
   // Create a new order
@@ -29,6 +139,7 @@ export const orderService = {
     customer_name: string;
     customer_email: string;
     total_amount: number;
+    shipping_address?: string | Record<string, any>;
     items: Array<{
       product_id: string;
       product_name: string;
@@ -37,15 +148,24 @@ export const orderService = {
     }>;
   }): Promise<Order | null> {
     try {
-      // Start a transaction
+      // Convert shipping address to string if it's an object
+      const shippingAddressStr = typeof orderData.shipping_address === 'object' 
+        ? JSON.stringify(orderData.shipping_address)
+        : (orderData.shipping_address || '');
+
+      // Ensure we always provide a non-empty shipping address string
+      const shippingValue =
+        typeof shippingAddressStr === 'string' && shippingAddressStr.trim().length > 0
+          ? shippingAddressStr
+          : 'Not Provided';
+
+      // Create the order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
-          customer_id: orderData.customer_id,
-          customer_name: orderData.customer_name,
-          customer_email: orderData.customer_email,
-          total_amount: orderData.total_amount,
-          status: 'processing',
+          user_id: orderData.customer_id,
+          status: 'pending',
+          shipping_address: shippingValue,
         }])
         .select()
         .single();
@@ -61,7 +181,7 @@ export const orderService = {
         product_id: item.product_id,
         product_name: item.product_name,
         quantity: item.quantity,
-        price: item.price,
+        product_price: item.price,
       }));
 
       const { error: itemsError } = await supabase
@@ -86,7 +206,7 @@ export const orderService = {
     try {
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .select('*')
+        .select(ORDER_SELECT)
         .eq('id', orderId)
         .single();
 
@@ -95,20 +215,7 @@ export const orderService = {
         return null;
       }
 
-      const { data: items, error: itemsError } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', orderId);
-
-      if (itemsError) {
-        console.error('Error fetching order items:', itemsError);
-        return null;
-      }
-
-      return {
-        ...order,
-        items: items || [],
-      };
+      return mapOrderRecord(order as RawOrderRecord);
     } catch (error) {
       console.error('Error fetching order:', error);
       return null;
@@ -120,8 +227,8 @@ export const orderService = {
     try {
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
-        .eq('customer_id', customerId)
+        .select(ORDER_SELECT)
+        .eq('user_id', customerId)
         .order('created_at', { ascending: false });
 
       if (ordersError) {
@@ -129,22 +236,7 @@ export const orderService = {
         return [];
       }
 
-      // Fetch items for each order
-      const ordersWithItems = await Promise.all(
-        orders.map(async (order) => {
-          const { data: items } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', order.id);
-
-          return {
-            ...order,
-            items: items || [],
-          };
-        })
-      );
-
-      return ordersWithItems;
+      return (orders as RawOrderRecord[]).map(mapOrderRecord);
     } catch (error) {
       console.error('Error fetching customer orders:', error);
       return [];
@@ -156,7 +248,7 @@ export const orderService = {
     try {
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(ORDER_SELECT)
         .order('created_at', { ascending: false });
 
       if (ordersError) {
@@ -164,22 +256,7 @@ export const orderService = {
         return [];
       }
 
-      // Fetch items for each order
-      const ordersWithItems = await Promise.all(
-        orders.map(async (order) => {
-          const { data: items } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', order.id);
-
-          return {
-            ...order,
-            items: items || [],
-          };
-        })
-      );
-
-      return ordersWithItems;
+      return (orders as RawOrderRecord[]).map(mapOrderRecord);
     } catch (error) {
       console.error('Error fetching all orders:', error);
       return [];

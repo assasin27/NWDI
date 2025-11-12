@@ -14,6 +14,7 @@ import {
   Package,
   Search
 } from 'lucide-react';
+import { productService } from '../../lib/productService';
 
 interface ProductForm {
   name: string;
@@ -71,24 +72,31 @@ const AddProduct: React.FC = () => {
       // Validate form
       if (!form.name || !form.price || !form.category) {
         setMessage({ type: 'error', text: 'Please fill in all required fields.' });
+        setLoading(false);
         return;
       }
 
-      // Simulate API call to add product
-      const newProduct = {
-        id: Date.now().toString(),
-        ...form,
+      // Add product to Supabase
+      const newProduct = await productService.addProduct({
+        name: form.name,
+        description: form.description,
         price: parseFloat(form.price),
-        createdAt: new Date().toISOString()
-      };
+        category: form.category,
+        unit: 'kg',
+        image_url: form.image,
+        quantity: 0,
+        in_stock: form.inStock
+      });
 
-      console.log('Adding product:', newProduct);
-      // In a real app, you'd save to Supabase here
-      // const { data, error } = await supabase
-      //   .from('products')
-      //   .insert([newProduct]);
+      if (!newProduct) {
+        setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
+        setLoading(false);
+        return;
+      }
 
-      setMessage({ type: 'success', text: 'Product added successfully! It will now appear in the customer portal.' });
+      console.log('Product added successfully:', newProduct);
+      setMessage({ type: 'success', text: 'Product added successfully! It will now appear in your dashboard.' });
+      
       setForm({
         name: '',
         description: '',
@@ -97,10 +105,12 @@ const AddProduct: React.FC = () => {
         image: '',
         inStock: true
       });
+      
       setTimeout(() => {
         navigate('/farmer/dashboard');
       }, 2000);
     } catch (error) {
+      console.error('Error adding product:', error);
       setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
     } finally {
       setLoading(false);
@@ -159,12 +169,12 @@ const AddProduct: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="category" className="text-orange-700 text-sm sm:text-base">Category *</Label>
                 <Select value={form.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger id="category" name="category" autoComplete="off" className="text-sm sm:text-base">
+                  <SelectTrigger className="text-sm sm:text-base">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category} id={`cat-${category}`} name="category">
+                      <SelectItem key={category} value={category}>
                         {category}
                       </SelectItem>
                     ))}

@@ -37,7 +37,8 @@ import {
   User,
   LogOut
 } from 'lucide-react';
-import { apiService } from '../../lib/apiService';
+import { productService } from '../../lib/productService';
+import { orderService } from '../../lib/orderService';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -134,10 +135,9 @@ interface StockAlert {
   const loadStats = async () => {
     try {
       // Get orders statistics
-      const ordersResponse = await apiService.getOrders();
+      const orders = await orderService.getAllOrders();
       
-      if (ordersResponse.data) {
-        const orders = ordersResponse.data as any[];
+      if (orders && orders.length > 0) {
         const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         const totalOrders = orders.length;
         const pendingOrders = orders.filter((o: any) => ['pending', 'confirmed', 'processing'].includes(o.status)).length;
@@ -153,10 +153,9 @@ interface StockAlert {
       }
 
       // Get products statistics
-      const productsResponse = await apiService.getProducts();
+      const products = await productService.getAllProducts();
       
-      if (productsResponse.data) {
-        const products = productsResponse.data as any[];
+      if (products && products.length > 0) {
         const totalProducts = products.length;
         const lowStockItems = products.filter((p: any) => p.quantity <= 10).length;
         const outOfStockItems = products.filter((p: any) => p.quantity === 0).length;
@@ -176,9 +175,9 @@ interface StockAlert {
 
   const loadRecentOrders = async () => {
     try {
-      const response = await apiService.getRecentOrders(10);
-      if (response.data) {
-        setRecentOrders(response.data as RecentOrder[]);
+      const orders = await orderService.getAllOrders();
+      if (orders) {
+        setRecentOrders(orders.slice(0, 10) as RecentOrder[]);
       }
     } catch (error) {
       console.error('Error loading recent orders:', error);
@@ -187,10 +186,10 @@ interface StockAlert {
 
   const loadInventoryItems = async () => {
     try {
-      const response = await apiService.getProducts();
-      if (response.data) {
+      const products = await productService.getAllProducts();
+      if (products) {
         // Transform products to inventory items format
-        const items = (response.data as any[]).map((product: any) => ({
+        const items = products.map((product: any) => ({
           id: product.id,
           product_id: product.id,
           product_name: product.name,
@@ -210,10 +209,10 @@ interface StockAlert {
 
   const loadStockAlerts = async () => {
     try {
-      const response = await apiService.getProducts();
-        if (response.data) {
+      const products = await productService.getAllProducts();
+        if (products) {
         // Create stock alerts based on low stock products
-        const alerts = (response.data as any[])
+        const alerts = products
           .filter((product: any) => (product.quantity ?? 0) <= 10)
           .map((product: any) => ({
             id: product.id,
@@ -235,9 +234,9 @@ interface StockAlert {
 
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const response = await apiService.updateOrder(orderId, { status });
+      const success = await orderService.updateOrderStatus(orderId, status as any);
       
-      if (response.data) {
+      if (success) {
         await loadRecentOrders();
         await loadStats();
       }
@@ -249,13 +248,13 @@ interface StockAlert {
   const handleUpdateStock = async (productId: string, quantity: number, operation: 'add' | 'subtract') => {
     try {
       // Get current product
-      const productResponse = await apiService.getProduct(productId);
-      if (productResponse.data) {
-        const currentQuantity = (productResponse.data as any).quantity;
+      const product = await productService.getProductById(productId);
+      if (product) {
+        const currentQuantity = product.quantity;
         const newQuantity = operation === 'add' ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
         
-        const response = await apiService.updateProduct(productId, { quantity: newQuantity });
-        if (response.data) {
+        const updated = await productService.updateProduct(productId, { quantity: newQuantity });
+        if (updated) {
           await loadInventoryItems();
           await loadStockAlerts();
           await loadStats();
@@ -268,9 +267,30 @@ interface StockAlert {
 
   const handleResolveAlert = async (alertId: string) => {
     try {
-      // For now, just reload stock alerts
-      // In a real implementation, you might want to mark alerts as resolved in the database
-      await loadStockAlerts();
+      // Get the alert product
+      const alert = stockAlerts.find(a => a.id === alertId);
+      if (!alert) {
+        console.error('Alert not found');
+        return;
+      }
+
+      // For out-of-stock alerts: bring back to minimum stock level
+      // For low-stock alerts: increase to double the minimum
+      const newQuantity = alert.alert_type === 'out_of_stock' 
+        ? alert.min_stock_level 
+        : alert.min_stock_level * 2;
+
+      // Update the product
+      const updated = await productService.updateProduct(alert.product_id || alert.id, {
+        quantity: newQuantity,
+        in_stock: newQuantity > 0
+      });
+
+      if (updated) {
+        // Reload alerts and stats
+        await loadStockAlerts();
+        await loadStats();
+      }
     } catch (error) {
       console.error('Error resolving alert:', error);
     }
@@ -278,18 +298,18 @@ interface StockAlert {
 
   const exportInventoryReport = async () => {
     try {
-      const response = await apiService.getProducts();
-      if (response.data) {
+      const products = await productService.getAllProducts();
+      if (products) {
         // Create CSV content
         const headers = ['Product ID', 'Product Name', 'Current Stock', 'Price', 'Category', 'Last Updated'];
         const csvContent = [
           headers.join(','),
-          ...((response.data as any[]).map((product: any) => [
+          ...(products.map((product: any) => [
             product.id,
             product.name,
             product.quantity,
             product.price,
-            product.category?.name || 'N/A',
+            product.category || 'N/A',
             product.updated_at
           ].join(',')))
         ].join('\n');

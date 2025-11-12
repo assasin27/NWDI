@@ -14,12 +14,14 @@ import {
   Package,
   Search
 } from 'lucide-react';
+import { productService } from '../../lib/productService';
 
 interface ProductForm {
   name: string;
   description: string;
   price: string;
   category: string;
+  unit: string;
   image: string;
   inStock: boolean;
 }
@@ -31,6 +33,7 @@ const AddProduct: React.FC = () => {
     description: '',
     price: '',
     category: '',
+    unit: 'kg',
     image: '',
     inStock: true
   });
@@ -45,6 +48,8 @@ const AddProduct: React.FC = () => {
     'Eco Friendly Products',
     'Handmade Warli Painted'
   ];
+
+  const units = ['kg', 'g', 'ltr', 'ml', 'pcs', 'bundle', 'packet'];
 
   const handleInputChange = (field: keyof ProductForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -74,19 +79,26 @@ const AddProduct: React.FC = () => {
         return;
       }
 
-      // Simulate API call to add product
-      const newProduct = {
-        id: Date.now().toString(),
-        ...form,
-        price: parseFloat(form.price),
-        createdAt: new Date().toISOString()
-      };
+      const price = parseFloat(form.price);
+      if (Number.isNaN(price)) {
+        setMessage({ type: 'error', text: 'Please enter a valid price.' });
+        return;
+      }
 
-      console.log('Adding product:', newProduct);
-      // In a real app, you'd save to Supabase here
-      // const { data, error } = await supabase
-      //   .from('products')
-      //   .insert([newProduct]);
+      const result = await productService.addProduct({
+        name: form.name,
+        description: form.description,
+        price,
+        category: form.category,
+        unit: form.unit,
+        image: form.image || undefined,
+        in_stock: form.inStock,
+      });
+
+      if (!result) {
+        setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
+        return;
+      }
 
       setMessage({ type: 'success', text: 'Product added successfully! It will now appear in the customer portal.' });
       setForm({
@@ -94,6 +106,7 @@ const AddProduct: React.FC = () => {
         description: '',
         price: '',
         category: '',
+        unit: 'kg',
         image: '',
         inStock: true
       });
@@ -188,6 +201,23 @@ const AddProduct: React.FC = () => {
                   className="text-sm sm:text-base"
                 />
               </div>
+
+            {/* Unit */}
+            <div className="space-y-2">
+              <Label htmlFor="unit" className="text-orange-700 text-sm sm:text-base">Unit *</Label>
+              <Select value={form.unit} onValueChange={(value) => handleInputChange('unit', value)}>
+                <SelectTrigger id="unit" name="unit" className="text-sm sm:text-base">
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {units.map((unitOption) => (
+                    <SelectItem key={unitOption} value={unitOption}>
+                      {unitOption.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
               {/* Description */}
               <div className="space-y-2">

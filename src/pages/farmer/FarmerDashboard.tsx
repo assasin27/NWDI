@@ -82,6 +82,9 @@ interface InventoryItem {
   min_stock_level: number;
   selling_price: number;
   last_updated: string;
+  product_id?: string;
+  unit?: string;
+  max_stock_level?: number;
 }
 
 interface StockAlert {
@@ -92,6 +95,8 @@ interface StockAlert {
   alert_type: string;
   created_at: string;
   is_resolved: boolean;
+  product_id?: string;
+  message?: string;
 }
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -132,7 +137,7 @@ interface StockAlert {
       const ordersResponse = await apiService.getOrders();
       
       if (ordersResponse.data) {
-        const orders = ordersResponse.data;
+        const orders = ordersResponse.data as any[];
         const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
         const totalOrders = orders.length;
         const pendingOrders = orders.filter((o: any) => ['pending', 'confirmed', 'processing'].includes(o.status)).length;
@@ -151,7 +156,7 @@ interface StockAlert {
       const productsResponse = await apiService.getProducts();
       
       if (productsResponse.data) {
-        const products = productsResponse.data;
+        const products = productsResponse.data as any[];
         const totalProducts = products.length;
         const lowStockItems = products.filter((p: any) => p.quantity <= 10).length;
         const outOfStockItems = products.filter((p: any) => p.quantity === 0).length;
@@ -173,7 +178,7 @@ interface StockAlert {
     try {
       const response = await apiService.getRecentOrders(10);
       if (response.data) {
-        setRecentOrders(response.data);
+        setRecentOrders(response.data as RecentOrder[]);
       }
     } catch (error) {
       console.error('Error loading recent orders:', error);
@@ -185,13 +190,16 @@ interface StockAlert {
       const response = await apiService.getProducts();
       if (response.data) {
         // Transform products to inventory items format
-        const items = response.data.map((product: any) => ({
+        const items = (response.data as any[]).map((product: any) => ({
           id: product.id,
+          product_id: product.id,
           product_name: product.name,
-          current_stock: product.quantity,
+          current_stock: product.quantity ?? 0,
           min_stock_level: 10, // Default minimum stock level
-          selling_price: product.price,
-          last_updated: product.updated_at
+          selling_price: product.price ?? 0,
+          last_updated: product.updated_at,
+          unit: product.unit || product.unit_type || '',
+          max_stock_level: product.max_stock_level || Math.max((product.quantity ?? 0) * 2, 100)
         }));
         setInventoryItems(items);
       }
@@ -203,16 +211,18 @@ interface StockAlert {
   const loadStockAlerts = async () => {
     try {
       const response = await apiService.getProducts();
-      if (response.data) {
+        if (response.data) {
         // Create stock alerts based on low stock products
-        const alerts = response.data
-          .filter((product: any) => product.quantity <= 10)
+        const alerts = (response.data as any[])
+          .filter((product: any) => (product.quantity ?? 0) <= 10)
           .map((product: any) => ({
             id: product.id,
+            product_id: product.id,
             product_name: product.name,
-            current_stock: product.quantity,
+            current_stock: product.quantity ?? 0,
             min_stock_level: 10,
-            alert_type: product.quantity === 0 ? 'out_of_stock' : 'low_stock',
+            alert_type: (product.quantity ?? 0) === 0 ? 'out_of_stock' : 'low_stock',
+            message: (product.quantity ?? 0) === 0 ? 'Product is out of stock' : 'Low stock level',
             created_at: product.updated_at,
             is_resolved: false
           }));
@@ -241,7 +251,7 @@ interface StockAlert {
       // Get current product
       const productResponse = await apiService.getProduct(productId);
       if (productResponse.data) {
-        const currentQuantity = productResponse.data.quantity;
+        const currentQuantity = (productResponse.data as any).quantity;
         const newQuantity = operation === 'add' ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
         
         const response = await apiService.updateProduct(productId, { quantity: newQuantity });
@@ -274,14 +284,14 @@ interface StockAlert {
         const headers = ['Product ID', 'Product Name', 'Current Stock', 'Price', 'Category', 'Last Updated'];
         const csvContent = [
           headers.join(','),
-          ...response.data.map((product: any) => [
+          ...((response.data as any[]).map((product: any) => [
             product.id,
             product.name,
             product.quantity,
             product.price,
             product.category?.name || 'N/A',
             product.updated_at
-          ].join(','))
+          ].join(',')))
         ].join('\n');
         
         const blob = new Blob([csvContent], { type: 'text/csv' });

@@ -1,5 +1,6 @@
 // API Service for Django Backend
-const API_BASE_URL = '/api/v1';
+// Use environment variable VITE_API_BASE_URL so dev/prod can point to different backends.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api/v1';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -22,11 +23,20 @@ class ApiService {
         ...options,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const text = await response.text();
+      let data: any = undefined;
+      try {
+        data = text ? JSON.parse(text) : undefined;
+      } catch (err) {
+        // not JSON - keep raw text
+        data = text;
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errMsg = data && data.detail ? data.detail : `HTTP ${response.status}`;
+        throw new Error(errMsg);
+      }
+
       return { data };
     } catch (error) {
       console.error(`API Error (${endpoint}):`, error);

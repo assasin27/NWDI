@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env': { ...process.env, ...env },
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
-      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY)
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL || '')
     },
     resolve: {
       alias: {
@@ -51,6 +52,15 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: true,
       allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1',"nwdi-swayam-branch.onrender.com"],
+      // Proxy /api requests to Django backend during development
+      proxy: {
+        '/api': {
+          target: env.VITE_API_BASE_URL || 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, '/api')
+        }
+      }
     },
     preview: {
       port: 8080,

@@ -54,30 +54,74 @@ export const cartService = {
     }
   },
 
-  // Add item to cart
-  async addToCart(userId: string, productId: string, quantity: number = 1, variant?: ProductVariant): Promise<{ success: boolean; message: string; item?: CartItem }> {
+  // Add item to cart (uses UUID product_id; variants tracked in selectedVariant JSONB)
+  async addToCart(userId: string, item: Omit<CartItem, 'user_id' | 'quantity' | 'product_id'>, quantity: number = 1): Promise<boolean> {
     try {
-      // Accept full product object
-      const response = await apiService.addToCart(productId);
-      if (response.error) {
-        errorHandler.handleError(response.error, 'CartService.addToCart');
-        return { success: false, message: 'Failed to add item to cart' };
+      // Check if item already exists in cart (same product UUID and same variant, if any)
+      const { data: existing, error: checkError } = await supabase
+        .from('cart_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('product_id', item.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116' && (checkError as any).status !== 406) { // treat 406 as not found
+        errorHandler.handleError(checkError, 'CartService.addToCart.check');
+        return false;
       }
-      return { 
-        success: true, 
-        message: response.isUpdate ? 'Cart item updated' : 'Item added to cart', 
-        item: response.data 
-      };
+
+      if (existing) {
+        // Update quantity if item exists
+        const { error } = await supabase
+          .from('cart_items')
+          .update({ quantity: existing.quantity + quantity })
+          .eq('user_id', userId)
+          .eq('product_id', item.id);
+        
+        if (error) {
+          errorHandler.handleError(error, 'CartService.addToCart.update');
+          return false;
+        }
+      } else {
+        // Insert new item
+        const cartItemData = {
+          name: item.name,
+          price: item.price,
+          image: item.image || '',
+          category: item.category || 'Misc',
+          description: item.description || '',
+          user_id: userId, 
+          quantity,
+          product_id: item.id, // UUID product id
+          is_organic: item.is_organic || false,
+          in_stock: item.in_stock || true
+        };
+        
+        const { error } = await supabase
+          .from('cart_items')
+          .insert([cartItemData]);
+        
+        if (error) {
+          errorHandler.handleError(error, 'CartService.addToCart.insert');
+          return false;
+        }
+      }
+      
+      return true;
     } catch (error) {
       errorHandler.handleError(error as Error, 'CartService.addToCart');
       return { success: false, message: 'An error occurred while adding to cart' };
     }
   },
 
-  // Remove item from cart
-  async removeFromCart(userId: string, productId: string, variant?: ProductVariant): Promise<boolean> {
+  // Remove item from cart (removes by product UUID and optional variant)
+  async removeFromCart(userId: string, itemId: string, variantName?: string): Promise<boolean> {
     try {
-      const response = await apiService.removeFromCart(userId, productId, variant);
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', userId)
+        .eq('product_id', itemId);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'CartService.removeFromCart');
@@ -91,10 +135,14 @@ export const cartService = {
     }
   },
 
-  // Update item quantity
-  async updateQuantity(userId: string, productId: string, quantity: number, variant?: ProductVariant): Promise<boolean> {
+  // Update quantity
+  async updateQuantity(userId: string, itemId: string, quantity: number, variantName?: string): Promise<boolean> {
     try {
-      const response = await apiService.updateQuantity(userId, productId, quantity, variant);
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity })
+        .eq('user_id', userId)
+        .eq('product_id', itemId);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'CartService.updateQuantity');

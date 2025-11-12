@@ -21,7 +21,10 @@ export const wishlistService = {
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing wishlist database connection...');
-      const response = await apiService.testWishlistConnection();
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .select('count')
+        .limit(1);
       
       if (response.error) {
         console.error('Database connection test failed:', response.error);
@@ -39,7 +42,10 @@ export const wishlistService = {
   // Get wishlist items for a user
   async getWishlistItems(userId: string): Promise<WishlistItem[]> {
     try {
-      const response = await apiService.getWishlistItems(userId);
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .select('*')
+        .eq('user_id', userId);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'WishlistService.getWishlistItems');
@@ -53,7 +59,7 @@ export const wishlistService = {
     }
   },
 
-  // Add item to wishlist
+  // Add item to wishlist (uses UUID product_id; variants tracked in selectedVariant JSONB)
   async addToWishlist(userId: string, item: Omit<WishlistItem, 'user_id' | 'product_id'>): Promise<boolean> {
     try {
       // Create a unique ID for the wishlist item that includes the variant
@@ -61,21 +67,40 @@ export const wishlistService = {
         ? `${item.id}-${item.selectedVariant.name}` 
         : item.id;
 
+      // Check if item already exists in wishlist
+      const { data: existing, error: checkError } = await supabase
+        .from('wishlist_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('product_id', uniqueWishlistItemId) // Use unique variant ID
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+        errorHandler.handleError(checkError, 'WishlistService.addToWishlist.check');
+        return false;
+      }
+
+      if (existing) {
+        // Item already exists, no need to add again
+        return true;
+      }
+
       // Insert new item
       const wishlistItemData = {
         name: item.name,
         price: item.price,
-        image: item.image,
-        category: item.category,
-        description: item.description,
+        image: item.image || '',
+        category: item.category || 'Misc',
+        description: item.description || '',
         user_id: userId,
-        product_id: uniqueWishlistItemId, // Use unique variant ID
+        product_id: item.id, // UUID product id
         is_organic: item.is_organic || false,
-        in_stock: item.in_stock || true,
-        selectedVariant: item.selectedVariant // Re-enabled now that column exists
+        in_stock: item.in_stock || true
       };
       
-      const response = await apiService.addToWishlist(userId, wishlistItemData);
+      const { error } = await supabase
+        .from('wishlist_items')
+        .insert([wishlistItemData]);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'WishlistService.addToWishlist.insert');
@@ -89,10 +114,14 @@ export const wishlistService = {
     }
   },
 
-  // Remove item from wishlist
-  async removeFromWishlist(userId: string, itemId: string): Promise<boolean> {
+  // Remove item from wishlist (removes by product UUID only; caller should pass correct variant if needed)
+  async removeFromWishlist(userId: string, itemId: string, variantName?: string): Promise<boolean> {
     try {
-      const response = await apiService.removeFromWishlist(userId, itemId);
+      const { error } = await supabase
+        .from('wishlist_items')
+        .delete()
+        .eq('user_id', userId)
+        .eq('product_id', itemId);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'WishlistService.removeFromWishlist');
@@ -109,7 +138,10 @@ export const wishlistService = {
   // Clear wishlist for a user
   async clearWishlist(userId: string): Promise<boolean> {
     try {
-      const response = await apiService.clearWishlist(userId);
+      const { error } = await supabase
+        .from('wishlist_items')
+        .delete()
+        .eq('user_id', userId);
       
       if (response.error) {
         errorHandler.handleError(response.error, 'WishlistService.clearWishlist');

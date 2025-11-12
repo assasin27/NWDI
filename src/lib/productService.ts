@@ -1,4 +1,4 @@
-import { apiService } from '@/lib/apiService';
+import { supabase } from '../integrations/supabase/supabaseClient';
 
 export interface Product {
   id: string;

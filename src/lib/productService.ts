@@ -14,6 +14,14 @@ export interface Product {
   updated_at: string;
 }
 
+  // Map database fields to Product interface fields
+  const mapDatabaseProduct = (dbProduct: any): Product => {
+    return {
+      ...dbProduct,
+      image: dbProduct.image_url || dbProduct.image, // Map image_url to image
+    };
+  };
+
 export const productService = {
   // Get all products
   async getAllProducts(): Promise<Product[]> {
@@ -28,7 +36,7 @@ export const productService = {
         return [];
       }
 
-      return data || [];
+       return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error fetching products:', error);
       return [];
@@ -49,7 +57,7 @@ export const productService = {
         return [];
       }
 
-      return data || [];
+       return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error fetching products by category:', error);
       return [];
@@ -70,7 +78,7 @@ export const productService = {
         return null;
       }
 
-      return data;
+       return data ? mapDatabaseProduct(data) : null;
     } catch (error) {
       console.error('Error fetching product:', error);
       return null;
@@ -104,7 +112,7 @@ export const productService = {
         return null;
       }
 
-      return data;
+       return data ? mapDatabaseProduct(data) : null;
     } catch (error) {
       console.error('Error adding product:', error);
       return null;
@@ -126,7 +134,7 @@ export const productService = {
         return null;
       }
 
-      return data;
+       return data ? mapDatabaseProduct(data) : null;
     } catch (error) {
       console.error('Error updating product:', error);
       return null;
@@ -167,7 +175,7 @@ export const productService = {
         return [];
       }
 
-      return data || [];
+       return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error searching products:', error);
       return [];

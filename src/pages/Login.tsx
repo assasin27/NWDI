@@ -75,6 +75,7 @@ const Login: React.FC = () => {
               required
               className="mt-1"
               placeholder="Enter your email"
+              autoComplete="email"
             />
           </div>
 
@@ -91,6 +92,7 @@ const Login: React.FC = () => {
                 required
                 className="pr-10"
                 placeholder="Enter your password"
+                autoComplete="current-password"
               />
               <button
                 type="button"

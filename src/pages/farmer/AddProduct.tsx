@@ -21,6 +21,7 @@ interface ProductForm {
   description: string;
   price: string;
   category: string;
+  unit: string;
   image: string;
   inStock: boolean;
 }
@@ -32,6 +33,7 @@ const AddProduct: React.FC = () => {
     description: '',
     price: '',
     category: '',
+    unit: 'kg',
     image: '',
     inStock: true
   });
@@ -46,6 +48,8 @@ const AddProduct: React.FC = () => {
     'Eco Friendly Products',
     'Handmade Warli Painted'
   ];
+
+  const units = ['kg', 'g', 'ltr', 'ml', 'pcs', 'bundle', 'packet'];
 
   const handleInputChange = (field: keyof ProductForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -102,6 +106,7 @@ const AddProduct: React.FC = () => {
         description: '',
         price: '',
         category: '',
+        unit: 'kg',
         image: '',
         inStock: true
       });
@@ -198,6 +203,23 @@ const AddProduct: React.FC = () => {
                   className="text-sm sm:text-base"
                 />
               </div>
+
+            {/* Unit */}
+            <div className="space-y-2">
+              <Label htmlFor="unit" className="text-orange-700 text-sm sm:text-base">Unit *</Label>
+              <Select value={form.unit} onValueChange={(value) => handleInputChange('unit', value)}>
+                <SelectTrigger id="unit" name="unit" className="text-sm sm:text-base">
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {units.map((unitOption) => (
+                    <SelectItem key={unitOption} value={unitOption}>
+                      {unitOption.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
               {/* Description */}
               <div className="space-y-2">

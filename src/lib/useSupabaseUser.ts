@@ -11,6 +11,7 @@ export function useSupabaseUser() {
 
     const initializeAuth = async () => {
       try {
+<<<<<<< HEAD
         // First, check if there's an active session
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -21,6 +22,16 @@ export function useSupabaseUser() {
             setUser(null);
           }
           setLoading(false);
+=======
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          if (error.name !== 'AuthSessionMissingError') {
+            console.error('Error getting user:', error);
+          }
+          setUser(null);
+        } else {
+          setUser(user);
+>>>>>>> 131a12e220cd22ed9aad95fe062c0fd4e24c06a4
         }
       } catch (error) {
         // AuthSessionMissingError is expected when no session exists

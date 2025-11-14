@@ -61,6 +61,7 @@ const FarmerLogin: React.FC = () => {
                   className="pl-10"
                   placeholder="test@nareshwadi.in"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -77,6 +78,7 @@ const FarmerLogin: React.FC = () => {
                   className="pl-10"
                   placeholder="farmer"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>

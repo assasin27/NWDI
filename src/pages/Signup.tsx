@@ -196,6 +196,7 @@ const Signup: React.FC = () => {
                       required
                       className="pl-10"
                       placeholder="Enter your email address"
+                      autoComplete="email"
                     />
                   </div>
                 </div>
@@ -212,6 +213,7 @@ const Signup: React.FC = () => {
                       required
                       className="pl-10 pr-10"
                       placeholder="Create a password"
+                      autoComplete="new-password"
                     />
                     <Button
                       type="button"
@@ -241,6 +243,7 @@ const Signup: React.FC = () => {
                       required
                       className="pl-10 pr-10"
                       placeholder="Confirm your password"
+                      autoComplete="new-password"
                     />
                     <Button
                       type="button"

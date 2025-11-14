@@ -9,18 +9,40 @@ export interface ApiResponse<T> {
 }
 
 class ApiService {
+  private buildUrl(endpoint: string): string {
+    const trimmed = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const [path, query] = trimmed.split('?');
+    const sanitizedPath = path.replace(/\/+$/, '');
+    const querySuffix = query ? `?${query}` : '';
+    return `${API_BASE_URL}/${sanitizedPath}${querySuffix}`;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const url = `${API_BASE_URL}${endpoint}`;
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
+      const { headers: optionHeaders, ...restOptions } = options;
+      const method = (restOptions.method || 'GET').toString().toUpperCase();
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...supabaseHeaders,
+        ...((optionHeaders as Record<string, string>) || {}),
+      };
+
+      if (
+        isSupabaseRest &&
+        ['POST', 'PUT', 'PATCH'].includes(method) &&
+        headers.Prefer === undefined
+      ) {
+        headers.Prefer = 'return=representation';
+      }
+
+      const response = await fetch(this.buildUrl(endpoint), {
+        ...restOptions,
+        method,
+        headers,
       });
 
       const text = await response.text();
@@ -46,15 +68,15 @@ class ApiService {
 
   // User Management
   async getUsers() {
-    return this.request('/users/');
+    return this.request('/user_profiles?select=*');
   }
 
   async getUser(id: string) {
-    return this.request(`/users/${id}/`);
+    return this.request(`/user_profiles?id=eq.${id}&select=*`);
   }
 
   async createUser(userData: any) {
-    return this.request('/users/', {
+    return this.request('/user_profiles', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -62,69 +84,69 @@ class ApiService {
 
   // Product Management
   async getProducts() {
-    return this.request('/products/');
+    return this.request('/products?select=*');
   }
 
   async getProduct(id: string) {
-    return this.request(`/products/${id}/`);
+    return this.request(`/products?id=eq.${id}&select=*`);
   }
 
   async createProduct(productData: any) {
-    return this.request('/products/', {
+    return this.request('/products', {
       method: 'POST',
       body: JSON.stringify(productData),
     });
   }
 
   async updateProduct(id: string, productData: any) {
-    return this.request(`/products/${id}/`, {
-      method: 'PUT',
+    return this.request(`/products?id=eq.${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(productData),
     });
   }
 
   async deleteProduct(id: string) {
-    return this.request(`/products/${id}/`, {
+    return this.request(`/products?id=eq.${id}`, {
       method: 'DELETE',
     });
   }
 
   // Order Management
   async getOrders() {
-    return this.request('/orders/');
+    return this.request('/orders?select=*');
   }
 
   async getOrder(id: string) {
-    return this.request(`/orders/${id}/`);
+    return this.request(`/orders?id=eq.${id}&select=*`);
   }
 
   async createOrder(orderData: any) {
-    return this.request('/orders/', {
+    return this.request('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
   }
 
   async updateOrder(id: string, orderData: any) {
-    return this.request(`/orders/${id}/`, {
-      method: 'PUT',
+    return this.request(`/orders?id=eq.${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(orderData),
     });
   }
 
   async deleteOrder(id: string) {
-    return this.request(`/orders/${id}/`, {
+    return this.request(`/orders?id=eq.${id}`, {
       method: 'DELETE',
     });
   }
 
   // Category Management
   async getCategories() {
-    return this.request('/products/categories/');
+    return this.request('/categories?select=*');
   }
 
   async createCategory(categoryData: any) {
-    return this.request('/products/categories/', {
+    return this.request('/categories', {
       method: 'POST',
       body: JSON.stringify(categoryData),
     });
@@ -132,34 +154,34 @@ class ApiService {
 
   // Seller Profile Management
   async getSellerProfiles() {
-    return this.request('/users/seller-profiles/');
+    return this.request('/seller_profiles?select=*');
   }
 
   async getSellerProfile(id: string) {
-    return this.request(`/users/seller-profiles/${id}/`);
+    return this.request(`/seller_profiles?id=eq.${id}&select=*`);
   }
 
   async createSellerProfile(profileData: any) {
-    return this.request('/users/seller-profiles/', {
+    return this.request('/seller_profiles', {
       method: 'POST',
       body: JSON.stringify(profileData),
     });
   }
 
   async updateSellerProfile(id: string, profileData: any) {
-    return this.request(`/users/seller-profiles/${id}/`, {
-      method: 'PUT',
+    return this.request(`/seller_profiles?id=eq.${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(profileData),
     });
   }
 
   // Review Management
   async getReviews() {
-    return this.request('/reviews/');
+    return this.request('/reviews?select=*');
   }
 
   async createReview(reviewData: any) {
-    return this.request('/reviews/', {
+    return this.request('/reviews', {
       method: 'POST',
       body: JSON.stringify(reviewData),
     });
@@ -167,11 +189,11 @@ class ApiService {
 
   // Notification Management
   async getNotifications() {
-    return this.request('/notifications/');
+    return this.request('/notifications?select=*');
   }
 
   async createNotification(notificationData: any) {
-    return this.request('/notifications/', {
+    return this.request('/notifications', {
       method: 'POST',
       body: JSON.stringify(notificationData),
     });
@@ -179,15 +201,15 @@ class ApiService {
 
   // Dashboard Statistics
   async getDashboardStats() {
-    return this.request('/dashboard/stats/');
+    return this.request('/dashboard_stats?select=*');
   }
 
   async getRecentOrders(limit: number = 10) {
-    return this.request(`/orders/?limit=${limit}`);
+    return this.request(`/orders?select=*&limit=${limit}`);
   }
 
   async getOrdersByStatus(status: string) {
-    return this.request(`/orders/?status=${status}`);
+    return this.request(`/orders?select=*&status=eq.${status}`);
   }
 }
 

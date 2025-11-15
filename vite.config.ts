@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
-      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1',"nwdi-swayam-branch.onrender.com"],
+      allowedHosts: ['nwdi.onrender.com', "nwdi-mchd.onrender.com", 'localhost', '127.0.0.1',"nwdi-swayam-branch.onrender.com","nwdi-master.onrender.com"],
       // Proxy /api requests to Django backend during development
       proxy: {
         '/api': {

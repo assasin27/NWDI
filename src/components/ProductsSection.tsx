@@ -440,7 +440,6 @@ const ProductsSection: React.FC = () => {
                 onRemoveFromWishlist={() => handleRemoveFromWishlist(product.id)}
                 isWishlisted={isWishlisted(product.id)}
                 loading={cartWishlistLoading || userLoading}
-                impactBadge="Supports a child for a week"
               />
             ))}
           </div>

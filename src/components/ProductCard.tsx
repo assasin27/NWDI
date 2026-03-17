@@ -5,6 +5,8 @@ import { Heart, ShoppingCart, Loader2, MessageCircle, Camera } from 'lucide-reac
 import { Dialog, DialogContent, DialogTrigger } from './ui/dialog';
 import { Chatbot } from './Chatbot';
 import { CameraCapture } from './CameraCapture';
+import { useCart } from '../hooks/useCart';
+import { useToast } from '../hooks/use-toast';
 
 // Minimal product shape that supports both local/static and Supabase-backed products
 interface DisplayProduct {
@@ -43,6 +45,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   const isInStock = (() => {
     if (typeof product.inStock === 'boolean') return product.inStock;
@@ -163,10 +167,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 productId={product.id}
                 productName={product.name}
                 originalPrice={product.price}
-                onPriceAgreed={(price) => {
-                  console.log(`Agreed on price: ₹${price}`);
-                  // TODO: Update cart with negotiated price
-                  setChatOpen(false);
+                onPriceAgreed={async (agreedPrice) => {
+                  // Add item to cart at negotiated price
+                  const cartItem = {
+                    id: product.id,
+                    name: product.name,
+                    price: agreedPrice, // Use negotiated price
+                    image: product.image || '',
+                    category: product.category || 'Misc',
+                    description: product.description || '',
+                    isOrganic: false, // Could be enhanced to check product data
+                    inStock: isInStock,
+                    selectedVariant: product.selectedVariant
+                  };
+
+                  const success = await addToCart(cartItem);
+                  if (success) {
+                    toast({
+                      title: "Added to Cart! 🎉",
+                      description: `${product.name} added at ₹${agreedPrice} (negotiated price)`,
+                    });
+                    setChatOpen(false);
+                  } else {
+                    toast({
+                      title: "Failed to add to cart",
+                      description: "Please try again or contact support",
+                      variant: "destructive",
+                    });
+                  }
                 }}
               />
             </DialogContent>

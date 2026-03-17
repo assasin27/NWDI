@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import SellerProfile
 import uuid
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -18,5 +19,8 @@ class Product(models.Model):
     image = models.URLField(max_length=200, blank=True, null=True)
     certification = models.CharField(max_length=255, blank=True)
     region = models.CharField(max_length=255, blank=True)
+    harvest_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+    freshness_score = models.FloatField(default=1.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -11,6 +11,11 @@ export interface Product {
   image?: string;
   image_url?: string;
   in_stock: boolean;
+  certification?: string;
+  region?: string;
+  harvest_date?: string;
+  expiry_date?: string;
+  freshness_score?: number;
   created_at: string;
   updated_at: string;
 }

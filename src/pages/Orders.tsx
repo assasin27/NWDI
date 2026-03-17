@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Package } from "lucide-react";
+import { CameraCapture } from "@/components/CameraCapture";
 
 interface OrderItem {
   id: string;
@@ -72,6 +73,12 @@ export default function Orders() {
                   ))}
                 </ul>
               </div>
+              {order.status === 'delivered' && (
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2">Verify Product Freshness</h4>
+                  <CameraCapture orderId={order.id} />
+                </div>
+              )}
             </div>
           ))}
           {orders.length === 0 && (

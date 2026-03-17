@@ -1,9 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration
-const supabaseUrl = 'https://lzjhjecktllltkizgwnr.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6amhqZWNrdGxsbHRraXpnd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTg0NTUsImV4cCI6MjA2ODE3NDQ1NX0.MW3fIJA4_8nnMnC-__8aloqH1tBo4IIpmA_2LPqDxug';
-const API_URL = 'http://localhost:8000/api/v1';
+// Configuration - Now using environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+// Validate configuration
+if (!supabaseUrl) {
+  throw new Error('Missing VITE_SUPABASE_URL environment variable');
+}
+if (!supabaseAnonKey) {
+  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+}
 
 // Export configuration
 export const SUPABASE_URL = supabaseUrl;

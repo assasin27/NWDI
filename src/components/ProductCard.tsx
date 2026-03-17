@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Heart, ShoppingCart, Loader2 } from 'lucide-react';
+import { Heart, ShoppingCart, Loader2, MessageCircle, Camera } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from './ui/dialog';
+import { Chatbot } from './Chatbot';
+import { CameraCapture } from './CameraCapture';
 
 // Minimal product shape that supports both local/static and Supabase-backed products
 interface DisplayProduct {
@@ -38,6 +41,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   impactBadge
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const isInStock = (() => {
     if (typeof product.inStock === 'boolean') return product.inStock;
@@ -139,6 +144,56 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </>
             )}
           </Button>
+
+          <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+            <DialogTrigger asChild>
+              <Button
+                disabled={!isInStock}
+                variant="outline"
+                size="sm"
+                className="px-3"
+                aria-label="Negotiate price"
+                title="Negotiate price with seller"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <Chatbot
+                productId={product.id}
+                productName={product.name}
+                originalPrice={product.price}
+                onPriceAgreed={(price) => {
+                  console.log(`Agreed on price: ₹${price}`);
+                  // TODO: Update cart with negotiated price
+                  setChatOpen(false);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-3"
+                aria-label="Check freshness"
+                title="Check product freshness with camera"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <CameraCapture
+                onFreshnessResult={(result) => {
+                  console.log(`Freshness check for ${product.name}:`, result);
+                  // TODO: Update product freshness score in database
+                  setCameraOpen(false);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
 
           <Button
             onClick={isWishlisted ? onRemoveFromWishlist : onAddToWishlist}

@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
-import { chatbotService, ChatMessage, BargainContext } from '../lib/chatbotService';
+import { chatbotService, ChatMessage, BargainContext, NegotiationResult } from '../lib/chatbotService';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
 import { MessageCircle } from 'lucide-react';
 
@@ -12,13 +12,15 @@ interface ChatbotProps {
   productName: string;
   originalPrice: number;
   onPriceAgreed?: (agreedPrice: number) => void;
+  onAddToCart?: (productId: string, negotiatedPrice: number) => void;
 }
 
 export const Chatbot: React.FC<ChatbotProps> = ({
   productId,
   productName,
   originalPrice,
-  onPriceAgreed
+  onPriceAgreed,
+  onAddToCart
 }) => {
   const { user } = useSupabaseUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -27,7 +29,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   const [usingFallback, setUsingFallback] = useState(false);
   const [pendingDeal, setPendingDeal] = useState<{price: number; productName: string} | null>(null);
 
-  const context: BargainContext = {
+  const [context, setContext] = useState<BargainContext>({
     productId,
     productName,
     originalPrice,
@@ -54,7 +56,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   }, [productName, originalPrice]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || negotiationComplete) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),

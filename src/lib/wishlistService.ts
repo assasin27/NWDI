@@ -29,7 +29,7 @@ export const wishlistService = {
     try {
       console.log('Testing wishlist database connection...');
       const { data, error } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .select('count')
         .limit(1);
       
@@ -50,7 +50,7 @@ export const wishlistService = {
   async getWishlistItems(userId: string): Promise<WishlistItem[]> {
     try {
       const { data, error } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .select('*')
         .eq('user_id', userId);
       
@@ -71,7 +71,7 @@ export const wishlistService = {
     try {
       // Check if item already exists in wishlist for the same product and variant (if any)
       const { data: existing, error: checkError } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .select('*')
         .eq('user_id', userId)
         .eq('product_id', item.id)
@@ -96,12 +96,11 @@ export const wishlistService = {
         description: item.description || '',
         user_id: userId,
         product_id: item.id, // UUID product id
-        is_organic: item.is_organic || false,
         in_stock: resolveInStockFlag(item)
       };
       
       const { error } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .insert([wishlistItemData]);
       
       if (error) {
@@ -120,7 +119,7 @@ export const wishlistService = {
   async removeFromWishlist(userId: string, itemId: string, variantName?: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .delete()
         .eq('user_id', userId)
         .eq('product_id', itemId);
@@ -141,7 +140,7 @@ export const wishlistService = {
   async clearWishlist(userId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .delete()
         .eq('user_id', userId);
       

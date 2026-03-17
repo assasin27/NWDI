@@ -186,6 +186,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <CameraCapture
+                autoStart={true}
                 onFreshnessResult={(result) => {
                   console.log(`Freshness check for ${product.name}:`, result);
                   // TODO: Update product freshness score in database

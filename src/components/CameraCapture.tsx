@@ -6,26 +6,35 @@ import { freshnessService, FreshnessResult } from '../lib/freshnessService';
 interface CameraCaptureProps {
   onFreshnessResult?: (result: FreshnessResult) => void;
   orderId?: string;
+  autoStart?: boolean; // New prop to auto-start camera
 }
 
-export const CameraCapture: React.FC<CameraCaptureProps> = ({ onFreshnessResult, orderId }) => {
+export const CameraCapture: React.FC<CameraCaptureProps> = ({ onFreshnessResult, orderId, autoStart = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<FreshnessResult | null>(null);
   const [error, setError] = useState<string>('');
+  const [cameraStarting, setCameraStarting] = useState(false);
 
   useEffect(() => {
+    // Auto-start camera if requested
+    if (autoStart) {
+      startCamera();
+    }
+
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream]);
+  }, [autoStart]);
 
   const startCamera = async () => {
     try {
+      setCameraStarting(true);
+      setError('');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' } // rear camera
       });
@@ -33,10 +42,11 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ onFreshnessResult,
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
-      setError('');
     } catch (err) {
       setError('Camera access denied or not available');
       console.error('Error accessing camera:', err);
+    } finally {
+      setCameraStarting(false);
     }
   };
 
@@ -100,19 +110,36 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ onFreshnessResult,
         <CardTitle>Freshness Detection</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!stream ? (
-          <Button onClick={startCamera} className="w-full">
-            Start Camera
-          </Button>
-        ) : (
+        {cameraStarting && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-2 text-sm text-gray-600">Starting camera...</p>
+          </div>
+        )}
+
+        {error && !cameraStarting && (
+          <div className="text-center py-8">
+            <div className="text-red-500 text-sm mb-4">{error}</div>
+            <Button onClick={startCamera} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        {stream && !cameraStarting && (
           <div className="space-y-4">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full rounded-lg border"
-            />
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full rounded-lg border"
+              />
+              <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                Live Preview
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button onClick={captureImage} disabled={analyzing} className="flex-1">
                 {analyzing ? 'Analyzing...' : 'Capture & Analyze'}
@@ -125,10 +152,6 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({ onFreshnessResult,
         )}
 
         <canvas ref={canvasRef} className="hidden" />
-
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
-        )}
 
         {result && (
           <div className="space-y-2">

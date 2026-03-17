@@ -76,7 +76,7 @@ export default function Orders() {
               {order.status === 'delivered' && (
                 <div className="mt-4">
                   <h4 className="font-medium mb-2">Verify Product Freshness</h4>
-                  <CameraCapture orderId={order.id} />
+                  <CameraCapture orderId={order.id} autoStart={true} />
                 </div>
               )}
             </div>

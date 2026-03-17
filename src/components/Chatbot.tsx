@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
-import { chatbotService, ChatMessage, BargainContext, NegotiationResult } from '../lib/chatbotService';
+import { chatbotService, ChatMessage, BargainContext } from '../lib/chatbotService';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
 import { MessageCircle } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
     userHistory: [], // TODO: fetch user history
     conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
     currentOffer: pendingDeal?.price
-  };
+  });
 
   useEffect(() => {
     // Initialize with AI greeting
@@ -56,7 +56,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   }, [productName, originalPrice]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading || negotiationComplete) return;
+    if (!input.trim() || loading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -65,9 +65,21 @@ export const Chatbot: React.FC<ChatbotProps> = ({
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
+
+    // Build updated context with current messages
+    const updatedContext: BargainContext = {
+      productId,
+      productName,
+      originalPrice,
+      userId: user?.id || '',
+      userHistory: [],
+      conversationHistory: updatedMessages.map(msg => ({ role: msg.role, content: msg.content })),
+      currentOffer: pendingDeal?.price
+    };
 
     // Quick shortcut: if user explicitly says "agreed at ₹X" (or similar), treat as confirmation
     const agreementMatch = input.match(/agreed (?:at )?₹?(\d+)/i);
@@ -89,7 +101,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
     }
 
     try {
-      const response = await chatbotService.negotiatePrice(input, context);
+      const response = await chatbotService.negotiatePrice(input, updatedContext);
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -98,6 +110,20 @@ export const Chatbot: React.FC<ChatbotProps> = ({
       };
       setMessages(prev => [...prev, aiMessage]);
       setUsingFallback(response.usingFallback);
+
+      // Check if the response already confirms item was added to cart
+      const alreadyAdded = /added to your cart|added to cart/i.test(response.content);
+      if (alreadyAdded) {
+        // Item was already added, trigger the callback and clear any pending deals
+        setTimeout(() => {
+          if (pendingDeal) {
+            onPriceAgreed?.(pendingDeal.price);
+            setPendingDeal(null);
+          }
+        }, 1500);
+        setLoading(false);
+        return;
+      }
 
       // Check if user is confirming a pending deal
       if (pendingDeal && (/(yes|yep|sure|add|confirm)/i.test(input))) {
@@ -114,6 +140,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           onPriceAgreed?.(pendingDeal.price);
           setPendingDeal(null); // Clear pending deal
         }, 1500);
+        setLoading(false);
         return; // Don't check for new agreements if confirming existing deal
       }
 
@@ -128,6 +155,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           timestamp: new Date()
         };
         setMessages(prev => [...prev, promptMessage]);
+        setLoading(false);
         return;
       }
 
@@ -144,6 +172,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
         };
         setMessages(prev => [...prev, successMessage]);
       }
+      setLoading(false);
     } catch (error) {
       console.error('Chat error:', error);
       setUsingFallback(true);

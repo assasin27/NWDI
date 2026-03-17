@@ -158,25 +158,18 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
-    console.log('🔍 Debug: handleAddToCart called for product:', product.name);
-    console.log('🔍 Debug: Negotiated price:', negotiatedPrice);
-    console.log('🔍 Debug: Product has variants:', !!product.variants);
-    console.log('🔍 Debug: Variants:', product.variants);
-
     // Use negotiated price if provided
     const finalPrice = negotiatedPrice || product.price;
-    const productToAdd = negotiatedPrice ? { ...product, price: finalPrice } : product;
-
-    // Check if product has variants (skip for negotiated products)
-    if (product.variants && product.variants.length > 0 && !negotiatedPrice) {
-      console.log('🔍 Debug: Showing variant selector for cart');
-      setSelectedProduct(product);
-      setVariantAction('cart');
-      setShowVariantSelector(true);
-      return;
-    }
-
-    console.log('🔍 Debug: Adding to cart with price:', finalPrice);
+    const productToAdd = {
+      id: product.id,
+      name: product.name,
+      price: finalPrice,
+      image: product.image || '/src/assets/placeholder.jpg',
+      category: product.category,
+      description: product.description || '',
+      isOrganic: false,
+      inStock: true
+    };
     setCartWishlistLoading(true);
     try {
       const result = await addToCart(productToAdd);
@@ -206,23 +199,19 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
-    console.log('🔍 Debug: handleAddToWishlist called for product:', product.name);
-    console.log('🔍 Debug: Product has variants:', !!product.variants);
-    console.log('🔍 Debug: Variants:', product.variants);
-
-    // Check if product has variants
-    if (product.variants && product.variants.length > 0) {
-      console.log('🔍 Debug: Showing variant selector for wishlist');
-      setSelectedProduct(product);
-      setVariantAction('wishlist');
-      setShowVariantSelector(true);
-      return;
-    }
-
-    console.log('🔍 Debug: No variants, adding directly to wishlist');
     setCartWishlistLoading(true);
     try {
-      const result = await addToWishlist(product);
+      const wishlistItem = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image || '/src/assets/placeholder.jpg',
+        category: product.category,
+        description: product.description || '',
+        isOrganic: false,
+        inStock: true
+      };
+      const result = await addToWishlist(wishlistItem);
       if (result) {
         showNotification(`${product.name} added to wishlist!`, 'info');
       } else {
@@ -271,26 +260,26 @@ const ProductsSection: React.FC = () => {
     setCartWishlistLoading(true);
     try {
       // Create a product with the selected variant
-      const productWithVariant = {
-        ...selectedProduct,
+      const variantItem = {
+        id: selectedProduct.id,
         name: `${selectedProduct.name} - ${variant.name}`,
         price: variant.price,
+        image: selectedProduct.image || '/src/assets/placeholder.jpg',
+        category: selectedProduct.category,
+        description: selectedProduct.description || '',
+        isOrganic: false,
+        inStock: true,
         selectedVariant: variant
       };
 
-      console.log('🔍 Debug: Product with variant:', productWithVariant);
-
       if (variantAction === 'cart') {
-        console.log('🔍 Debug: Adding variant to cart');
-        await addToCart(productWithVariant);
+        await addToCart(variantItem);
         showNotification(`${variant.name} variant added to cart!`, 'success');
       } else if (variantAction === 'wishlist') {
-        console.log('🔍 Debug: Adding variant to wishlist');
-        await addToWishlist(productWithVariant);
+        await addToWishlist(variantItem);
         showNotification(`${variant.name} variant added to wishlist!`, 'info');
       }
     } catch (error) {
-      console.error('🔍 Debug: Error in handleVariantSelect:', error);
       showNotification(`Failed to add ${variant.name} variant`, 'error');
     } finally {
       setCartWishlistLoading(false);
@@ -443,8 +432,11 @@ const ProductsSection: React.FC = () => {
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
-                product={product}
-                onAddToCart={(negotiatedProduct, negotiatedPrice) => handleAddToCart(negotiatedProduct || product, negotiatedPrice)}
+                product={product as any}
+                onAddToCart={(negotiatedProduct, negotiatedPrice) => {
+                  const prod = negotiatedProduct || product;
+                  handleAddToCart(prod as any, negotiatedPrice);
+                }}
                 onAddToWishlist={() => handleAddToWishlist(product)}
                 onRemoveFromWishlist={() => handleRemoveFromWishlist(product.id)}
                 isWishlisted={isWishlisted(product.id)}
@@ -466,7 +458,7 @@ const ProductsSection: React.FC = () => {
       {/* Variant Selector Modal */}
       {showVariantSelector && selectedProduct && (
         <VariantSelector
-          product={selectedProduct}
+          product={selectedProduct as any}
           onSelect={handleVariantSelect}
           onClose={handleVariantClose}
           productType={selectedProduct.name === 'Rice' ? 'rice' : 'dhoopbatti'}

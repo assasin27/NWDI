@@ -18,6 +18,14 @@ export interface BargainContext {
   userId: string;
   userHistory?: string[]; // past purchases or negotiations
   conversationHistory?: Array<{role: 'user' | 'assistant', content: string}>; // Add conversation history
+  negotiationState?: 'initial' | 'negotiating' | 'agreed' | 'declined';
+}
+
+export interface NegotiationResult {
+  response: string;
+  agreedPrice?: number;
+  isComplete: boolean;
+  shouldAddToCart: boolean;
 }
 
 export const chatbotService = {
@@ -394,6 +402,10 @@ Reply as a helpful negotiation assistant. Keep it short and focused on price.`;
     const lowerMessage = message.toLowerCase();
     const messageLength = context.conversationHistory?.length || 0;
 
+    // Calculate price constraints early so they're available throughout
+    const maxDiscountPercent = this.getMaxDiscountPercent(context.originalPrice);
+    const minAllowedPrice = this.getMinAllowedPrice(context.originalPrice);
+
     // Analyze user message for intent
     const isOffering = /\d+/.test(message) || lowerMessage.includes('offer') || lowerMessage.includes('pay');
     const isAgreeing = lowerMessage.includes('deal') || lowerMessage.includes('ok') || lowerMessage.includes('sure') || lowerMessage.includes('confirm') || (lowerMessage.includes('yes') && messageLength > 1);
@@ -428,9 +440,6 @@ Reply as a helpful negotiation assistant. Keep it short and focused on price.`;
     }
 
     if (offeredPrice !== null) {
-      const maxDiscountPercent = this.getMaxDiscountPercent(context.originalPrice);
-      const minAllowedPrice = this.getMinAllowedPrice(context.originalPrice);
-
       if (offeredPrice >= minAllowedPrice) {
         return `That works! Let's lock it in at ₹${offeredPrice}. Reply "yes" to add it to your cart.`;
       }

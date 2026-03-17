@@ -167,7 +167,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 productId={product.id}
                 productName={product.name}
                 originalPrice={product.price}
-<<<<<<< HEAD
                 onPriceAgreed={async (agreedPrice) => {
                   // Add item to cart at negotiated price
                   const cartItem = {
@@ -196,21 +195,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                       variant: "destructive",
                     });
                   }
-=======
-                onPriceAgreed={(price) => {
-                  console.log(`Agreed on price: ₹${price}`);
-                  // Keep dialog open for user to see the result
-                }}
-                onAddToCart={(productId, negotiatedPrice) => {
-                  // Create a product object with negotiated price
-                  const negotiatedProduct = {
-                    ...product,
-                    price: negotiatedPrice,
-                    name: `${product.name} (Negotiated: ₹${negotiatedPrice})`
-                  };
-                  onAddToCart(negotiatedProduct);
-                  setChatOpen(false);
->>>>>>> 21e37ecec742a869eb6fba5ec04b30260928c947
                 }}
               />
             </DialogContent>

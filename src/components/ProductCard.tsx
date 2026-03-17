@@ -23,7 +23,7 @@ interface DisplayProduct {
 
 interface ProductCardProps {
   product: DisplayProduct;
-  onAddToCart: () => void;
+  onAddToCart: (product?: DisplayProduct, negotiatedPrice?: number) => void;
   onAddToWishlist: () => void;
   onRemoveFromWishlist: () => void;
   isWishlisted: boolean;
@@ -128,7 +128,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <Button
-            onClick={onAddToCart}
+            onClick={() => onAddToCart(product)}
             disabled={loading || !isInStock}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             size="sm"
@@ -165,7 +165,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 originalPrice={product.price}
                 onPriceAgreed={(price) => {
                   console.log(`Agreed on price: ₹${price}`);
-                  // TODO: Update cart with negotiated price
+                  // Keep dialog open for user to see the result
+                }}
+                onAddToCart={(productId, negotiatedPrice) => {
+                  // Create a product object with negotiated price
+                  const negotiatedProduct = {
+                    ...product,
+                    price: negotiatedPrice,
+                    name: `${product.name} (Negotiated: ₹${negotiatedPrice})`
+                  };
+                  onAddToCart(negotiatedProduct);
                   setChatOpen(false);
                 }}
               />

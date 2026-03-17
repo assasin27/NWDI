@@ -140,7 +140,10 @@ const ProductsSection: React.FC = () => {
     return true;
   };
 
-  const handleAddToCart = async (product: Product) => {
+  const handleAddToCart = async (product?: Product, negotiatedPrice?: number) => {
+    // If no product provided, this shouldn't happen but handle gracefully
+    if (!product) return;
+    
     if (userLoading) {
       return;
     }
@@ -156,11 +159,16 @@ const ProductsSection: React.FC = () => {
     }
 
     console.log('🔍 Debug: handleAddToCart called for product:', product.name);
+    console.log('🔍 Debug: Negotiated price:', negotiatedPrice);
     console.log('🔍 Debug: Product has variants:', !!product.variants);
     console.log('🔍 Debug: Variants:', product.variants);
 
-    // Check if product has variants
-    if (product.variants && product.variants.length > 0) {
+    // Use negotiated price if provided
+    const finalPrice = negotiatedPrice || product.price;
+    const productToAdd = negotiatedPrice ? { ...product, price: finalPrice } : product;
+
+    // Check if product has variants (skip for negotiated products)
+    if (product.variants && product.variants.length > 0 && !negotiatedPrice) {
       console.log('🔍 Debug: Showing variant selector for cart');
       setSelectedProduct(product);
       setVariantAction('cart');
@@ -168,12 +176,13 @@ const ProductsSection: React.FC = () => {
       return;
     }
 
-    console.log('🔍 Debug: No variants, adding directly to cart');
+    console.log('🔍 Debug: Adding to cart with price:', finalPrice);
     setCartWishlistLoading(true);
     try {
-      const result = await addToCart(product);
+      const result = await addToCart(productToAdd);
       if (result) {
-        showNotification(`${product.name} added to cart!`, 'success');
+        const priceText = negotiatedPrice ? ` at negotiated price ₹${negotiatedPrice}` : '';
+        showNotification(`${product.name} added to cart${priceText}!`, 'success');
       } else {
         showNotification(`Failed to add ${product.name} to cart`, 'error');
       }
@@ -435,7 +444,7 @@ const ProductsSection: React.FC = () => {
               <ProductCard
                 key={product.id}
                 product={product}
-                onAddToCart={() => handleAddToCart(product)}
+                onAddToCart={(negotiatedProduct, negotiatedPrice) => handleAddToCart(negotiatedProduct || product, negotiatedPrice)}
                 onAddToWishlist={() => handleAddToWishlist(product)}
                 onRemoveFromWishlist={() => handleRemoveFromWishlist(product.id)}
                 isWishlisted={isWishlisted(product.id)}

@@ -68,14 +68,14 @@ export const cartService = {
   },
 
   // Add item to cart (uses UUID product_id; variants tracked in selectedVariant JSONB)
-  async addToCart(userId: string, item: Omit<CartItem, 'user_id' | 'quantity' | 'product_id'>, quantity: number = 1): Promise<boolean> {
+  async addToCart(userId: string, item: Omit<CartItem, 'user_id' | 'quantity' | 'product_id'>, productId: string, quantity: number = 1): Promise<boolean> {
     try {
       // Check if item already exists in cart (same product UUID and same variant, if any)
       const { data: existing, error: checkError } = await supabase
         .from('cart_items')
         .select('*')
         .eq('user_id', userId)
-        .eq('product_id', item.id)
+        .eq('product_id', productId)
         .single();
 
       if (checkError && checkError.code !== 'PGRST116' && (checkError as any).status !== 406) { // treat 406 as not found
@@ -89,7 +89,7 @@ export const cartService = {
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('user_id', userId)
-          .eq('product_id', item.id);
+          .eq('product_id', productId);
         
         if (error) {
           errorHandler.handleError(error, 'CartService.addToCart.update');
@@ -105,8 +105,7 @@ export const cartService = {
           description: item.description || '',
           user_id: userId, 
           quantity,
-          product_id: item.id, // UUID product id
-          is_organic: item.is_organic || false,
+          product_id: productId, // UUID product id
           in_stock: resolveInStockFlag(item)
         };
         

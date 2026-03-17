@@ -111,7 +111,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         selectedVariant: item.selectedVariant
       };
 
-      const success = await cartService.addToCart(user.id, cartItemData);
+      const success = await cartService.addToCart(user.id, cartItemData, item.id);
       
       if (success) {
         await loadCart(); // Reload cart to get updated state

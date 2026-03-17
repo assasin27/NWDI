@@ -157,7 +157,7 @@ export const databaseSetup = {
 
       // Check wishlist table
       const { data: wishlistData, error: wishlistError } = await supabase
-        .from('wishlist')
+        .from('wishlist_items')
         .select('*')
         .limit(1);
       

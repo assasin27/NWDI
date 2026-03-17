@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
-import { chatbotService, ChatMessage, BargainContext } from '../lib/chatbotService';
+import { chatbotService, ChatMessage, BargainContext, NegotiationResult } from '../lib/chatbotService';
 import { useSupabaseUser } from '../lib/useSupabaseUser';
 
 interface ChatbotProps {
@@ -11,27 +11,31 @@ interface ChatbotProps {
   productName: string;
   originalPrice: number;
   onPriceAgreed?: (agreedPrice: number) => void;
+  onAddToCart?: (productId: string, negotiatedPrice: number) => void;
 }
 
 export const Chatbot: React.FC<ChatbotProps> = ({
   productId,
   productName,
   originalPrice,
-  onPriceAgreed
+  onPriceAgreed,
+  onAddToCart
 }) => {
   const { user } = useSupabaseUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [negotiationComplete, setNegotiationComplete] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const context: BargainContext = {
+  const [context, setContext] = useState<BargainContext>({
     productId,
     productName,
     originalPrice,
     userId: user?.id || '',
-    userHistory: [] // TODO: fetch user history
-  };
+    userHistory: [],
+    negotiationState: 'initial'
+  });
 
   useEffect(() => {
     // Initialize with AI greeting
@@ -55,7 +59,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || negotiationComplete) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -69,19 +73,41 @@ export const Chatbot: React.FC<ChatbotProps> = ({
     setLoading(true);
 
     try {
-      const response = await chatbotService.negotiatePrice(input, context);
+      const result: NegotiationResult = await chatbotService.negotiatePrice(input, context);
+      
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response,
+        content: result.response,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
 
-      // Check if price agreed (simple heuristic)
-      const agreedPrice = extractAgreedPrice(response);
-      if (agreedPrice && agreedPrice < originalPrice) {
-        onPriceAgreed?.(agreedPrice);
+      // Update context with current offer if provided
+      if (result.agreedPrice) {
+        setContext(prev => ({ ...prev, currentOffer: result.agreedPrice }));
+      }
+
+      // Handle negotiation completion
+      if (result.isComplete) {
+        setNegotiationComplete(true);
+        
+        if (result.shouldAddToCart && result.agreedPrice) {
+          // Add to cart automatically
+          onAddToCart?.(productId, result.agreedPrice);
+          
+          // Show success message
+          const successMessage: ChatMessage = {
+            id: (Date.now() + 2).toString(),
+            role: 'assistant',
+            content: `✅ ${productName} has been added to your cart at ₹${result.agreedPrice}!`,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, successMessage]);
+        } else if (result.agreedPrice) {
+          // Price agreed but waiting for confirmation
+          onPriceAgreed?.(result.agreedPrice);
+        }
       }
     } catch (error) {
       console.error('Chat error:', error);
@@ -112,6 +138,11 @@ export const Chatbot: React.FC<ChatbotProps> = ({
     <Card className="w-full max-w-md h-96 flex flex-col">
       <CardHeader>
         <CardTitle className="text-lg">Price Negotiation</CardTitle>
+        {negotiationComplete && (
+          <div className="text-sm text-green-600 font-medium">
+            Negotiation Complete
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-4">
         <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
@@ -146,11 +177,14 @@ export const Chatbot: React.FC<ChatbotProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Enter your offer..."
-            disabled={loading}
+            placeholder={negotiationComplete ? "Negotiation complete" : "Enter your offer..."}
+            disabled={loading || negotiationComplete}
             className="flex-1"
           />
-          <Button onClick={sendMessage} disabled={loading || !input.trim()}>
+          <Button 
+            onClick={sendMessage} 
+            disabled={loading || !input.trim() || negotiationComplete}
+          >
             Send
           </Button>
         </div>

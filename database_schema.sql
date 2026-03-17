@@ -1,7 +1,8 @@
+
 -- Database Schema for FarmFresh Dual-Portal System
 
--- Enable Row Level Security
-ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
+-- Disable Row Level Security for simpler local/dev usage
+ALTER TABLE auth.users DISABLE ROW LEVEL SECURITY;
 
 -- Create farmer_profiles table
 CREATE TABLE IF NOT EXISTS farmer_profiles (
@@ -13,15 +14,27 @@ CREATE TABLE IF NOT EXISTS farmer_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create categories table (used by products.category_id)
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create products table (if not exists)
+-- Use category_id (uuid) and image_url to align with frontend and chat history schema
 CREATE TABLE IF NOT EXISTS products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  category_id UUID REFERENCES public.categories(id),
   name TEXT NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
   description TEXT,
-  category TEXT NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  quantity INTEGER DEFAULT 0,
+  image_url TEXT,
+  certification TEXT,
+  region TEXT,
   unit TEXT NOT NULL,
-  image TEXT,
   in_stock BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -80,13 +93,13 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable RLS on all tables
-ALTER TABLE farmer_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE wishlist_items ENABLE ROW LEVEL SECURITY;
+-- Disable RLS on application tables (if you want RLS in production, revert these)
+ALTER TABLE farmer_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE cart_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE wishlist_items DISABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for farmer_profiles
 CREATE POLICY "Farmer profiles are viewable by the farmer" ON farmer_profiles
@@ -219,7 +232,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_cart_items_user_id ON cart_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_user_id ON wishlist_items(user_id);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_farmer_profiles_user_id ON farmer_profiles(user_id);
 
 -- Create function to update updated_at timestamp

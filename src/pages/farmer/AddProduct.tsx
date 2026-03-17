@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -22,6 +22,7 @@ interface ProductForm {
   price: string;
   category: string;
   unit: string;
+  quantity: string;
   image: string;
   inStock: boolean;
 }
@@ -34,20 +35,21 @@ const AddProduct: React.FC = () => {
     price: '',
     category: '',
     unit: 'kg',
+    quantity: '',
     image: '',
     inStock: true
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
-  const categories = [
-    'Fruits',
-    'Vegetables', 
-    'Grains',
-    'Dairy',
-    'Eco Friendly Products',
-    'Handmade Warli Painted'
-  ];
+  useEffect(() => {
+    const loadCategories = async () => {
+      const categories = await productService.fetchCategories();
+      setCategories(categories);
+    };
+    loadCategories();
+  }, []);
 
   const units = ['kg', 'g', 'ltr', 'ml', 'pcs', 'bundle', 'packet'];
 
@@ -72,26 +74,22 @@ const AddProduct: React.FC = () => {
     setLoading(true);
     setMessage(null);
 
+    console.log('Form values:', form);  // Log form values to check if they are set
+
     try {
-      // Validate form
-      if (!form.name || !form.price || !form.category) {
+      if (!form.name || !form.category || !form.unit) {
         setMessage({ type: 'error', text: 'Please fill in all required fields.' });
         return;
       }
 
-      const price = parseFloat(form.price);
-      if (Number.isNaN(price)) {
-        setMessage({ type: 'error', text: 'Please enter a valid price.' });
-        return;
-      }
-
-      const result = await productService.addProduct({
+      const result = await productService.addProductWithCategory({
         name: form.name,
         description: form.description,
-        price,
-        category: form.category,
+        price: parseFloat(form.price),
+        categoryId: form.category,  // Ensure this is categoryId
         unit: form.unit,
-        image: form.image || undefined,
+        image_url: form.image || undefined,
+        quantity: form.quantity ? parseInt(form.quantity, 10) : 0,
         in_stock: form.inStock,
       });
 
@@ -100,13 +98,14 @@ const AddProduct: React.FC = () => {
         return;
       }
 
-      setMessage({ type: 'success', text: 'Product added successfully! It will now appear in the customer portal.' });
+      setMessage({ type: 'success', text: 'Product added successfully!' });
       setForm({
         name: '',
         description: '',
         price: '',
         category: '',
         unit: 'kg',
+        quantity: '',
         image: '',
         inStock: true
       });
@@ -168,17 +167,34 @@ const AddProduct: React.FC = () => {
                 />
               </div>
 
+              {/* Quantity */}
+              <div className="space-y-2">
+                <Label htmlFor="quantity" className="text-orange-700 text-sm sm:text-base">Quantity</Label>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  autoComplete="off"
+                  type="number"
+                  step="1"
+                  min={0}
+                  value={form.quantity}
+                  onChange={(e) => handleInputChange('quantity', e.target.value)}
+                  placeholder="e.g., 10"
+                  className="text-sm sm:text-base"
+                />
+              </div>
+
               {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category" className="text-orange-700 text-sm sm:text-base">Category *</Label>
                 <Select value={form.category} onValueChange={(value) => handleInputChange('category', value)}>
-                  <SelectTrigger id="category" name="category" autoComplete="off" className="text-sm sm:text-base">
+                  <SelectTrigger id="category" className="text-sm sm:text-base">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category} id={`cat-${category}`} name="category">
-                        {category}
+                      <SelectItem key={category.id} value={category.id} id={`cat-${category.id}`}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -202,22 +218,22 @@ const AddProduct: React.FC = () => {
                 />
               </div>
 
-            {/* Unit */}
-            <div className="space-y-2">
-              <Label htmlFor="unit" className="text-orange-700 text-sm sm:text-base">Unit *</Label>
-              <Select value={form.unit} onValueChange={(value) => handleInputChange('unit', value)}>
-                <SelectTrigger id="unit" name="unit" className="text-sm sm:text-base">
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {units.map((unitOption) => (
-                    <SelectItem key={unitOption} value={unitOption}>
-                      {unitOption.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Unit */}
+              <div className="space-y-2">
+                <Label htmlFor="unit" className="text-orange-700 text-sm sm:text-base">Unit *</Label>
+                <Select value={form.unit} onValueChange={(value) => handleInputChange('unit', value)}>
+                  <SelectTrigger id="unit" className="text-sm sm:text-base">
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.map((unitOption) => (
+                      <SelectItem key={unitOption} value={unitOption}>
+                        {unitOption.toUpperCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Description */}
               <div className="space-y-2">

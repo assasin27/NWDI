@@ -33,9 +33,12 @@ export interface OrderItem {
 
 type RawOrderRecord = {
   id: string;
-  user_id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
   status: string;
-  shipping_address?: string | null;
+  shipping_address?: string | Record<string, any> | null;
   created_at: string;
   updated_at: string;
   order_items?: Array<{
@@ -43,27 +46,14 @@ type RawOrderRecord = {
     order_id: string;
     product_id: string | null;
     product_name: string;
-    product_price?: number | null;
-    price?: number | null;
-    quantity?: number | null;
+    price: number | null;
+    quantity: number | null;
     created_at: string;
   }>;
-  user?: {
-    id: string;
-    email?: string | null;
-    first_name?: string | null;
-    last_name?: string | null;
-  } | null;
 };
 
 const ORDER_SELECT = `
   *,
-  user:users!orders_user_id_fkey (
-    id,
-    email,
-    first_name,
-    last_name
-  ),
   order_items (*)
 `;
 
@@ -148,24 +138,16 @@ export const orderService = {
     }>;
   }): Promise<Order | null> {
     try {
-      // Convert shipping address to string if it's an object
-      const shippingAddressStr = typeof orderData.shipping_address === 'object' 
-        ? JSON.stringify(orderData.shipping_address)
-        : (orderData.shipping_address || '');
-
-      // Ensure we always provide a non-empty shipping address string
-      const shippingValue =
-        typeof shippingAddressStr === 'string' && shippingAddressStr.trim().length > 0
-          ? shippingAddressStr
-          : 'Not Provided';
-
       // Create the order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
-          user_id: orderData.customer_id,
-          status: 'pending',
-          shipping_address: shippingValue,
+          customer_id: orderData.customer_id,
+          customer_name: orderData.customer_name,
+          customer_email: orderData.customer_email,
+          total_amount: orderData.total_amount,
+          status: 'processing', // Changed from 'pending' to 'processing' to match database constraint
+          shipping_address: orderData.shipping_address, // Keep as object for JSONB
         }])
         .select()
         .single();
@@ -181,7 +163,7 @@ export const orderService = {
         product_id: item.product_id,
         product_name: item.product_name,
         quantity: item.quantity,
-        product_price: item.price,
+        price: item.price,
       }));
 
       const { error: itemsError } = await supabase

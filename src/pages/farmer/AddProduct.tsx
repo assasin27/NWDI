@@ -79,26 +79,31 @@ const AddProduct: React.FC = () => {
     try {
       if (!form.name || !form.category || !form.unit) {
         setMessage({ type: 'error', text: 'Please fill in all required fields.' });
+        setLoading(false);
         return;
       }
 
-      const result = await productService.addProductWithCategory({
+      // Add product to Supabase with combined parameters
+      const newProduct = await productService.addProduct({
         name: form.name,
         description: form.description,
         price: parseFloat(form.price),
-        categoryId: form.category,  // Ensure this is categoryId
+        categoryId: form.category,
         unit: form.unit,
         image_url: form.image || undefined,
         quantity: form.quantity ? parseInt(form.quantity, 10) : 0,
-        in_stock: form.inStock,
+        in_stock: form.inStock
       });
 
-      if (!result) {
+      if (!newProduct) {
         setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
+        setLoading(false);
         return;
       }
 
-      setMessage({ type: 'success', text: 'Product added successfully!' });
+      console.log('Product added successfully:', newProduct);
+      setMessage({ type: 'success', text: 'Product added successfully! It will now appear in your dashboard.' });
+      
       setForm({
         name: '',
         description: '',
@@ -109,10 +114,12 @@ const AddProduct: React.FC = () => {
         image: '',
         inStock: true
       });
+      
       setTimeout(() => {
         navigate('/farmer/dashboard');
       }, 2000);
     } catch (error) {
+      console.error('Error adding product:', error);
       setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
     } finally {
       setLoading(false);

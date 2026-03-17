@@ -1,20 +1,6 @@
-import {
-  SUPABASE_ANON_KEY,
-  SUPABASE_URL,
-} from '../integrations/supabase/supabaseClient';
-
-// API Service configured to work with Supabase REST by default.
-const DEFAULT_API_BASE_URL = `${SUPABASE_URL}/rest/v1`;
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || DEFAULT_API_BASE_URL;
-const isSupabaseRest = API_BASE_URL.startsWith(`${SUPABASE_URL}/rest/v1`);
-
-const supabaseHeaders = isSupabaseRest
-  ? {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    }
-  : {};
+// API Service for Django Backend
+// Use environment variable VITE_API_BASE_URL so dev/prod can point to different backends.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api/v1';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -59,23 +45,21 @@ class ApiService {
         headers,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        return { data };
-      }
-
       const text = await response.text();
-      throw new Error(
-        `Expected JSON but received different content-type. Response: ${text.slice(
-          0,
-          200,
-        )}`,
-      );
+      let data: any = undefined;
+      try {
+        data = text ? JSON.parse(text) : undefined;
+      } catch (err) {
+        // not JSON - keep raw text
+        data = text;
+      }
+
+      if (!response.ok) {
+        const errMsg = data && data.detail ? data.detail : `HTTP ${response.status}`;
+        throw new Error(errMsg);
+      }
+
+      return { data };
     } catch (error) {
       console.error(`API Error (${endpoint}):`, error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };

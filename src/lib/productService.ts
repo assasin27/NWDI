@@ -1,53 +1,65 @@
 import { supabase } from '../integrations/supabase/supabaseClient';
-import { PostgrestSingleResponse, PostgrestResponse } from '@supabase/supabase-js';
 
 export interface Product {
   id: string;
   name: string;
   price: number;
+  quantity: number;
   description?: string;
   category_id: string;
-  quantity?: number;
   unit: string;
   image_url?: string;
-
   in_stock: boolean;
   created_at: string;
   updated_at: string;
 }
 
-async function handleSupabaseResponse<T>(response: PostgrestSingleResponse<T>): Promise<T | null> {
-  if (response.error) {
-    console.error('Supabase error:', response.error);
-    return null;
+const clampQuantity = (value: unknown): number => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric) || Number.isNaN(numeric)) {
+    return 0;
   }
-  return response.data;
-}
+  return Math.max(0, Math.floor(numeric));
+};
 
-async function getCategoryId(categoryName: string): Promise<string | null> {
-  const { data, error } = await supabase.from('categories').select('id').eq('name', categoryName).single();
-  if (error || !data) {
-    console.error('Error fetching category ID:', error);
-    return null;
+const deriveInStock = (quantity: number, inStock: unknown): boolean => {
+  if (quantity <= 0) {
+    return false;
   }
-  return data.id;
-}
+
+  if (typeof inStock === 'boolean') {
+    return inStock;
+  }
+
+  return quantity > 0;
+};
+
+// Map database fields to Product interface fields
+const mapDatabaseProduct = (dbProduct: any): Product => {
+  const quantity = clampQuantity(dbProduct.quantity);
+
+  return {
+    ...dbProduct,
+    quantity,
+    in_stock: deriveInStock(quantity, dbProduct.in_stock),
+  };
+};
 
 export const productService = {
   // Get all products
   async getAllProducts(): Promise<Product[]> {
     try {
-      const response = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (response.error) {
-        console.error('Error fetching products:', response.error);
+      if (error) {
+        console.error('Error fetching products:', error);
         return [];
       }
 
-      return response.data || [];
+      return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error fetching products:', error);
       return [];
@@ -57,18 +69,18 @@ export const productService = {
   // Get products by category
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
     try {
-      const response = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('category_id', categoryId)
         .order('created_at', { ascending: false });
 
-      if (response.error) {
-        console.error('Error fetching products by category:', response.error);
+      if (error) {
+        console.error('Error fetching products by category:', error);
         return [];
       }
 
-      return response.data || [];
+      return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error fetching products by category:', error);
       return [];
@@ -78,146 +90,116 @@ export const productService = {
   // Get product by ID
   async getProductById(productId: string): Promise<Product | null> {
     try {
-      console.log('Product ID:', productId); // Ensure this logs a valid ID
-      const response = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('id', productId)
         .single();
 
-      return handleSupabaseResponse(response);
+      if (error) {
+        console.error('Error fetching product:', error);
+        return null;
+      }
+
+      return data ? mapDatabaseProduct(data) : null;
     } catch (error) {
       console.error('Error fetching product:', error);
       return null;
     }
   },
 
-  // Add new product
+  // Add new product - accepting combination of both incoming and current parameters
   async addProduct(productData: {
     name: string;
     price: number;
     description?: string;
-    categoryId: string;
-    quantity?: number;
+    categoryId?: string;
+    category?: string;
     unit: string;
     image_url?: string;
+    quantity?: number;
     in_stock?: boolean;
   }): Promise<Product | null> {
     try {
-      // Basic validation
-      const validationErrors: string[] = [];
-      if (!productData.name || !productData.name.trim()) validationErrors.push('name is required');
-      if (!productData.categoryId || !productData.categoryId.trim()) validationErrors.push('categoryId is required');
-      if (!productData.unit || !productData.unit.trim()) validationErrors.push('unit is required');
-      if (typeof productData.price !== 'number' || !isFinite(productData.price) || productData.price < 0) validationErrors.push('price must be a non-negative number');
-      if (productData.quantity !== undefined && (!Number.isInteger(productData.quantity) || productData.quantity < 0)) validationErrors.push('quantity must be an integer >= 0');
-      if (productData.image_url !== undefined && productData.image_url !== null && typeof productData.image_url !== 'string') validationErrors.push('image_url must be a string');
-
-      if (validationErrors.length) {
-        const msg = `Validation error: ${validationErrors.join('; ')}`;
-        console.error(msg);
-        throw new Error(msg);
+      // Support both categoryId and category parameter names
+      const categoryValue = productData.categoryId || productData.category;
+      
+      let categoryId = categoryValue;
+      
+      // If category is a name (string that's not a UUID), get or create the ID
+      if (categoryValue && !categoryValue.match(/^[0-9a-f]{8}-[0-9a-f]{4}-/i)) {
+        categoryId = await this.getCategoryIdByName(categoryValue);
+      }
+      
+      if (!categoryId) {
+        console.error('Failed to get or create category');
+        return null;
       }
 
-      // Prepare the product data with proper types
-      // Build sanitized payload (only known fields)
-      const productToAdd: Record<string, any> = {
-        name: productData.name.trim(),
-        price: Number(productData.price) || 0,
-        description: productData.description?.trim() || null,
-        category_id: productData.categoryId.trim(),
-        quantity: productData.quantity !== undefined ? Number(productData.quantity) : 0,
-        unit: productData.unit.trim(),
-        image_url: productData.image_url?.trim() || null,
-        in_stock: productData.in_stock !== undefined ? productData.in_stock : true,
-      };
+      const quantity = clampQuantity(productData.quantity);
 
-      // Insert the product
-      const response = await supabase
-        .from('products')
-        .insert([productToAdd])
-        .select('*')  // Explicitly select all columns to ensure we get the complete record
-        .single();
-
-      return handleSupabaseResponse(response);
-    } catch (error) {
-      console.error('Error in addProduct:', error);
-      throw error; // Re-throw to allow error handling in the component
-    }
-  },
-
-  // Add new product with category selection
-  async addProductWithCategory(productData: {
-    name: string;
-    price: number;
-    description?: string;
-    categoryId: string;
-    quantity?: number;
-    unit: string;
-    image_url?: string;
-    in_stock?: boolean;
-  }): Promise<Product | null> {
-    try {
-      // Basic validation
-      const validationErrors: string[] = [];
-      if (!productData.name || !productData.name.trim()) validationErrors.push('name is required');
-      if (!productData.categoryId || !productData.categoryId.trim()) validationErrors.push('categoryId is required');
-      if (!productData.unit || !productData.unit.trim()) validationErrors.push('unit is required');
-      if (typeof productData.price !== 'number' || !isFinite(productData.price) || productData.price < 0) validationErrors.push('price must be a non-negative number');
-      if (productData.quantity !== undefined && (!Number.isInteger(productData.quantity) || productData.quantity < 0)) validationErrors.push('quantity must be an integer >= 0');
-      if (productData.image_url !== undefined && productData.image_url !== null && typeof productData.image_url !== 'string') validationErrors.push('image_url must be a string');
-
-      if (validationErrors.length) {
-        const msg = `Validation error: ${validationErrors.join('; ')}`;
-        console.error(msg);
-        throw new Error(msg);
-      }
-
-      // Use the provided categoryId directly
-      const categoryId = productData.categoryId;
-
-      // Build sanitized payload
-      const productToAdd: Record<string, any> = {
-        name: productData.name.trim(),
-        price: Number(productData.price) || 0,
-        description: productData.description?.trim() || null,
-        category_id: categoryId,  // Ensure this is category_id
-        quantity: productData.quantity !== undefined ? Number(productData.quantity) : 0,
-        unit: productData.unit.trim(),
-        image_url: productData.image_url?.trim() || null,  // Use image_url instead of image
-        in_stock: productData.in_stock !== undefined ? productData.in_stock : true,
+      const insertData = {
+        name: productData.name,
+        price: productData.price,
+        description: productData.description || '',
+        category_id: categoryId,
+        unit: productData.unit || 'kg',
+        image_url: productData.image_url || '',
+        quantity,
+        in_stock: deriveInStock(quantity, productData.in_stock),
       };
 
       const { data, error } = await supabase
         .from('products')
-        .insert([productToAdd])
-        .select('*')
+        .insert([insertData])
+        .select()
         .single();
 
       if (error) {
         console.error('Error adding product:', error);
-        throw error;
+        return null;
       }
 
-      return data as Product;
+      return data ? mapDatabaseProduct(data) : null;
     } catch (error) {
-      console.error('Error in addProductWithCategory:', error);
-      throw error;
+      console.error('Error adding product:', error);
+      return null;
     }
   },
 
   // Update product
   async updateProduct(productId: string, updates: Partial<Product>): Promise<Product | null> {
     try {
-      console.log('Product ID:', productId); // Ensure this logs a valid ID
-      const response = await supabase
-        .from('products')
-        .update(updates)
-        .eq('id', productId)
-        .select()
-        .single();
+      // Filter out undefined values
+      const cleanUpdates: Record<string, any> = {};
+      Object.keys(updates).forEach(key => {
+        if (updates[key as keyof Product] !== undefined) {
+          cleanUpdates[key] = updates[key as keyof Product];
+        }
+      });
 
-      return handleSupabaseResponse(response);
+      if (cleanUpdates.quantity !== undefined) {
+        const normalizedQuantity = clampQuantity(cleanUpdates.quantity);
+        cleanUpdates.quantity = normalizedQuantity;
+        cleanUpdates.in_stock = deriveInStock(normalizedQuantity, cleanUpdates.in_stock);
+      } else if (cleanUpdates.in_stock !== undefined) {
+        cleanUpdates.in_stock = !!cleanUpdates.in_stock;
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .update(cleanUpdates)
+        .eq('id', productId)
+        .select();
+
+      if (error) {
+        console.error('Error updating product:', error);
+        return null;
+      }
+
+      // Return first item if array, handle the case where multiple rows might be returned
+      const product = Array.isArray(data) ? data[0] : data;
+      return product ? mapDatabaseProduct(product) : null;
     } catch (error) {
       console.error('Error updating product:', error);
       return null;
@@ -227,14 +209,13 @@ export const productService = {
   // Delete product
   async deleteProduct(productId: string): Promise<boolean> {
     try {
-      console.log('Product ID:', productId); // Ensure this logs a valid ID
-      const response = await supabase
+      const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId);
 
-      if (response.error) {
-        console.error('Error deleting product:', response.error);
+      if (error) {
+        console.error('Error deleting product:', error);
         return false;
       }
 
@@ -248,75 +229,96 @@ export const productService = {
   // Search products
   async searchProducts(query: string): Promise<Product[]> {
     try {
-      const response = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('*')
         .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
         .order('created_at', { ascending: false });
 
-      if (response.error) {
-        console.error('Error searching products:', response.error);
+      if (error) {
+        console.error('Error searching products:', error);
         return [];
       }
 
-      return response.data || [];
+      return (data || []).map(mapDatabaseProduct);
     } catch (error) {
       console.error('Error searching products:', error);
       return [];
     }
   },
 
-  // Get product categories
-  async getProductCategories(): Promise<string[]> {
+  // Get product categories from categories table
+  async getProductCategories(): Promise<{ id: string; name: string }[]> {
     try {
-      const response = await supabase
-        .from('products')
-        .select('category_id')
-        .order('category_id');
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name');
 
-      if (response.error) {
-        console.error('Error fetching product categories:', response.error);
+      if (error) {
+        console.error('Error fetching product categories:', error);
         return [];
       }
 
-      const categories = [...new Set(response.data?.map(p => p.category_id) || [])];
-      return categories;
+      return data || [];
     } catch (error) {
       console.error('Error fetching product categories:', error);
       return [];
     }
   },
 
-  // Fetch categories
+  // Fetch categories - alias for getProductCategories
   async fetchCategories(): Promise<{ id: string; name: string }[]> {
-    try {
-      const response = await supabase
-        .from('categories')
-        .select('id, name');
+    return this.getProductCategories();
+  },
 
-      if (response.error) {
-        console.error('Error fetching categories:', response.error);
-        return [];
+  // Get or create category by name
+  async getCategoryIdByName(categoryName: string): Promise<string | null> {
+    try {
+      // First try to find existing category
+      const { data: existing, error: searchError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name', categoryName)
+        .single();
+
+      if (existing) {
+        return existing.id;
       }
 
-      return response.data || [];
+      // If not found, create new category
+      if (searchError?.code === 'PGRST116') {
+        const { data: newCategory, error: createError } = await supabase
+          .from('categories')
+          .insert([{ name: categoryName }])
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('Error creating category:', createError);
+          return null;
+        }
+
+        return newCategory?.id || null;
+      }
+
+      return null;
     } catch (error) {
-      console.error('Error fetching categories:', error);
-      return [];
+      console.error('Error getting category ID:', error);
+      return null;
     }
   },
 
   // Update product stock status
   async updateProductStock(productId: string, inStock: boolean): Promise<boolean> {
     try {
-      console.log('Product ID:', productId); // Ensure this logs a valid ID
-      const response = await supabase
+      const { error } = await supabase
         .from('products')
         .update({ in_stock: inStock })
         .eq('id', productId);
 
-      if (response.error) {
-        console.error('Error updating product stock:', response.error);
+      if (error) {
+        console.error('Error updating product stock:', error);
         return false;
       }
 
@@ -330,16 +332,16 @@ export const productService = {
   // Get products count
   async getProductsCount(): Promise<number> {
     try {
-      const response = await supabase
+      const { count, error } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true });
 
-      if (response.error) {
-        console.error('Error getting products count:', response.error);
+      if (error) {
+        console.error('Error getting products count:', error);
         return 0;
       }
 
-      return response.count || 0;
+      return count || 0;
     } catch (error) {
       console.error('Error getting products count:', error);
       return 0;
@@ -349,17 +351,15 @@ export const productService = {
   // Get products statistics
   async getProductStats(): Promise<{
     totalProducts: number;
-
     inStockProducts: number;
     outOfStockProducts: number;
   }> {
     try {
-      const response = await supabase
+      const { data: products } = await supabase
         .from('products')
         .select('in_stock');
 
-      if (response.error) {
-        console.error('Error getting product stats:', response.error);
+      if (!products) {
         return {
           totalProducts: 0,
           inStockProducts: 0,
@@ -368,10 +368,9 @@ export const productService = {
       }
 
       const stats = {
-        totalProducts: response.data?.length || 0,
-
-        inStockProducts: response.data?.filter(p => p.in_stock).length || 0,
-        outOfStockProducts: response.data?.filter(p => !p.in_stock).length || 0,
+        totalProducts: products.length,
+        inStockProducts: products.filter(p => p.in_stock).length,
+        outOfStockProducts: products.filter(p => !p.in_stock).length,
       };
 
       return stats;
@@ -382,54 +381,6 @@ export const productService = {
         inStockProducts: 0,
         outOfStockProducts: 0,
       };
-    }
-  },
-
-  // Initialize categories
-  async initializeCategories(): Promise<void> {
-    try {
-      // Add categories to the category table
-      const response = await supabase
-        .from('categories')
-        .insert([
-          { name: 'Fruits' },
-          { name: 'Vegetables' },
-          { name: 'Dairy' },
-        ]);
-
-      if (response.error) {
-        console.error('Error initializing categories:', response.error);
-        return;
-      }
-
-      // Update products with category IDs
-      const fruitsCat = await supabase.from('categories').select('id').eq('name', 'Fruits').single();
-      const fruitsId = fruitsCat.data?.id || null;
-      const fruitsResponse = await supabase
-        .from('products')
-        .update({ category_id: fruitsId })
-        .eq('category_id', 'Fruits');
-
-      const vegCat = await supabase.from('categories').select('id').eq('name', 'Vegetables').single();
-      const vegId = vegCat.data?.id || null;
-      const vegetablesResponse = await supabase
-        .from('products')
-        .update({ category_id: vegId })
-        .eq('category_id', 'Vegetables');
-
-      const dairyCat = await supabase.from('categories').select('id').eq('name', 'Dairy').single();
-      const dairyId = dairyCat.data?.id || null;
-      const dairyResponse = await supabase
-        .from('products')
-        .update({ category_id: dairyId })
-        .eq('category_id', 'Dairy');
-
-      if (fruitsResponse.error || vegetablesResponse.error || dairyResponse.error) {
-        console.error('Error updating products with category IDs:', fruitsResponse.error || vegetablesResponse.error || dairyResponse.error);
-        return;
-      }
-    } catch (error) {
-      console.error('Error initializing categories:', error);
     }
   },
 };

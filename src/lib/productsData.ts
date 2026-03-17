@@ -10,7 +10,9 @@ export interface Product {
   image: string;
   category: string;
   description: string;
-  inStock: boolean;
+  inStock?: boolean;
+  in_stock?: boolean;
+  quantity?: number;
   variants?: ProductVariant[];
   selectedVariant?: ProductVariant;
 }

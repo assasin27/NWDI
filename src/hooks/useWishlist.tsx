@@ -38,6 +38,13 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(false);
   const { user, loading: userLoading } = useSupabaseUser();
 
+  const deriveInStock = (item: { inStock?: boolean; in_stock?: boolean; quantity?: number }) => {
+    if (typeof item.inStock === 'boolean') return item.inStock;
+    if (typeof item.in_stock === 'boolean') return item.in_stock;
+    if (typeof item.quantity === 'number') return item.quantity > 0;
+    return true;
+  };
+
   // Load wishlist from database when user changes
   useEffect(() => {
     if (user?.id && !userLoading) {
@@ -66,7 +73,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         category: item.category,
         description: item.description,
         isOrganic: item.is_organic,
-        inStock: item.in_stock,
+        inStock: deriveInStock({ in_stock: item.in_stock }),
         selectedVariant: item.selectedVariant
       }));
       setWishlist(uiWishlistItems);
@@ -93,7 +100,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         category: item.category,
         description: item.description,
         is_organic: item.isOrganic,
-        in_stock: item.inStock,
+        in_stock: deriveInStock(item),
         selectedVariant: item.selectedVariant
       });
       if (success) {

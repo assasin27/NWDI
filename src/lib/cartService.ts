@@ -17,6 +17,13 @@ export interface CartItem {
   selectedVariant?: ProductVariant; // Make optional to avoid database issues
 }
 
+const resolveInStockFlag = (item: any): boolean => {
+  if (typeof item?.in_stock === 'boolean') return item.in_stock;
+  if (typeof item?.inStock === 'boolean') return item.inStock;
+  if (typeof item?.quantity === 'number') return item.quantity > 0;
+  return true;
+};
+
 export const cartService = {
   // Test function to check database connection and table existence
   async testConnection(): Promise<boolean> {
@@ -100,7 +107,7 @@ export const cartService = {
           quantity,
           product_id: item.id, // UUID product id
           is_organic: item.is_organic || false,
-          in_stock: item.in_stock || true
+          in_stock: resolveInStockFlag(item)
         };
         
         const { error } = await supabase

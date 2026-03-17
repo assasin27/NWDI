@@ -53,7 +53,7 @@ describe('ProductCard Component', () => {
       
       expect(screen.getByText('Organic Apples')).toBeInTheDocument();
       expect(screen.getByText('₹5.99')).toBeInTheDocument();
-      expect(screen.getByText('Fruits')).toBeInTheDocument();
+      expect(screen.getByText(/fruits/i)).toBeInTheDocument();
       expect(screen.getByText('Fresh organic apples from local farms')).toBeInTheDocument();
     });
 
@@ -70,7 +70,7 @@ describe('ProductCard Component', () => {
       
       expect(screen.getByText('Organic Apples')).toBeInTheDocument();
       expect(screen.getByText('₹5.99')).toBeInTheDocument();
-      expect(screen.getByText('fruits')).toBeInTheDocument();
+      expect(screen.getByText(/fruits/i)).toBeInTheDocument();
     });
 
     it('should display product description', () => {
@@ -91,16 +91,16 @@ describe('ProductCard Component', () => {
     it('should show empty heart when product is not wishlisted', () => {
       render(<ProductCard {...defaultProps} isWishlisted={false} />);
       
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
+      const wishlistButton = screen.getByRole('button', { name: /add to wishlist/i });
       expect(wishlistButton).toBeInTheDocument();
-      expect(wishlistButton).toHaveClass('bg-white/80');
+      expect(wishlistButton).toHaveClass('border-primary');
     });
 
     it('should show filled heart when product is wishlisted', () => {
       render(<ProductCard {...defaultProps} isWishlisted={true} />);
       
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
-      expect(wishlistButton).toHaveClass('bg-red-500');
+      const wishlistButton = screen.getByRole('button', { name: /remove from wishlist/i });
+      expect(wishlistButton).toHaveClass('bg-destructive');
     });
 
     it('should toggle wishlist state when heart button is clicked', () => {
@@ -116,7 +116,7 @@ describe('ProductCard Component', () => {
         />
       );
       
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
+      const wishlistButton = screen.getByRole('button', { name: /add to wishlist/i });
       fireEvent.click(wishlistButton);
       
       expect(onAddToWishlist).toHaveBeenCalledTimes(1);
@@ -133,7 +133,7 @@ describe('ProductCard Component', () => {
         />
       );
       
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
+      const wishlistButton = screen.getByRole('button', { name: /remove from wishlist/i });
       fireEvent.click(wishlistButton);
       
       expect(onRemoveFromWishlist).toHaveBeenCalledTimes(1);
@@ -142,19 +142,26 @@ describe('ProductCard Component', () => {
     it('should be disabled when loading', () => {
       render(<ProductCard {...defaultProps} loading={true} />);
       
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
+      const wishlistButton = screen.getByRole('button', { name: /add to wishlist/i });
       expect(wishlistButton).toBeDisabled();
     });
 
     it('should have correct styling for wishlisted vs non-wishlisted state', () => {
       const { rerender } = render(<ProductCard {...defaultProps} isWishlisted={false} />);
       
-      let wishlistButton = screen.getByRole('button', { name: /wishlist/i });
-      expect(wishlistButton).toHaveClass('bg-white/80');
+      let wishlistButton = screen.getByRole('button', { name: /add to wishlist/i });
+      expect(wishlistButton).toHaveClass('border-primary');
       
       rerender(<ProductCard {...defaultProps} isWishlisted={true} />);
-      wishlistButton = screen.getByRole('button', { name: /wishlist/i });
-      expect(wishlistButton).toHaveClass('bg-red-500');
+      wishlistButton = screen.getByRole('button', { name: /remove from wishlist/i });
+      expect(wishlistButton).toHaveClass('bg-destructive');
+    });
+
+    it('should be disabled for out-of-stock products', () => {
+      render(<ProductCard {...defaultProps} product={mockOutOfStockProduct} />);
+
+      const wishlistButton = screen.getByRole('button', { name: /add to wishlist \(out of stock\)/i });
+      expect(wishlistButton).toBeDisabled();
     });
   });
 
@@ -220,7 +227,7 @@ describe('ProductCard Component', () => {
       
       render(<ProductCard {...defaultProps} product={dhoopbattiProduct} />);
       
-      expect(screen.getByText(/add to cart or wishlist to choose variety\/fragrance/i)).toBeInTheDocument();
+      expect(screen.getByText(/add to cart or wishlist to choose fragrance/i)).toBeInTheDocument();
     });
 
     it('should not show variant hint for products without variants', () => {
@@ -246,10 +253,13 @@ describe('ProductCard Component', () => {
       render(<ProductCard {...defaultProps} />);
       
       const addToCartButton = screen.getByRole('button', { name: /add to cart/i });
-      const wishlistButton = screen.getByRole('button', { name: /wishlist/i });
+      const wishlistButton = screen.getByRole('button', { name: /add to wishlist/i });
       
-      expect(addToCartButton).toHaveAttribute('tabIndex');
-      expect(wishlistButton).toHaveAttribute('tabIndex');
+      addToCartButton.focus();
+      expect(addToCartButton).toHaveFocus();
+      
+      wishlistButton.focus();
+      expect(wishlistButton).toHaveFocus();
     });
 
     it('should have proper focus indicators', () => {

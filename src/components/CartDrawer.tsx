@@ -150,7 +150,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         customer_name: user.user_metadata?.name || user.email || 'Customer',
         customer_email: user.email || '',
         total_amount: total,
-        delivery_address: selectedAddress,
+        shipping_address: selectedAddress,  // Include the full address object
         items: cart.map(item => ({
           product_id: item.id,
           product_name: item.name,

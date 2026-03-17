@@ -133,6 +133,13 @@ const ProductsSection: React.FC = () => {
     }
   };
 
+  const isProductInStock = (product: Product) => {
+    if (typeof product.in_stock === 'boolean') return product.in_stock;
+    if (typeof (product as any).inStock === 'boolean') return (product as any).inStock;
+    if (typeof product.quantity === 'number') return product.quantity > 0;
+    return true;
+  };
+
   const handleAddToCart = async (product: Product) => {
     if (userLoading) {
       return;
@@ -140,6 +147,11 @@ const ProductsSection: React.FC = () => {
     
     if (!user) {
       showNotification('Please log in to add items to cart', 'error');
+      return;
+    }
+
+    if (!isProductInStock(product)) {
+      showNotification(`${product.name} is currently out of stock`, 'error');
       return;
     }
 
@@ -177,6 +189,11 @@ const ProductsSection: React.FC = () => {
     
     if (!user) {
       showNotification('Please log in to add items to wishlist', 'error');
+      return;
+    }
+
+    if (!isProductInStock(product)) {
+      showNotification(`${product.name} is currently out of stock`, 'error');
       return;
     }
 
@@ -230,6 +247,14 @@ const ProductsSection: React.FC = () => {
   const handleVariantSelect = async (variant: ProductVariant) => {
     if (!selectedProduct) return;
     
+    if (!isProductInStock(selectedProduct)) {
+      showNotification(`${selectedProduct.name} is currently out of stock`, 'error');
+      setShowVariantSelector(false);
+      setSelectedProduct(null);
+      setVariantAction(null);
+      return;
+    }
+
     console.log('🔍 Debug: handleVariantSelect called');
     console.log('🔍 Debug: Selected variant:', variant.name);
     console.log('🔍 Debug: Variant action:', variantAction);

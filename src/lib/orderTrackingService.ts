@@ -173,7 +173,7 @@ export const orderTrackingService = {
           *,
           order_items (*)
         `)
-        .eq('customer_id', customerId)
+        .eq('user_id', customerId)
         .order('created_at', { ascending: false });
 
       if (error) {

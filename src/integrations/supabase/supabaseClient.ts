@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 // Configuration - Now using environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
 
 // Validate configuration
 if (!supabaseUrl) {

@@ -10,7 +10,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    seller = models.ForeignKey(SellerProfile, on_delete=models.CASCADE, related_name='products')
+    seller = models.ForeignKey(SellerProfile, on_delete=models.SET_NULL, null=True, related_name='products')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=255)
     description = models.TextField()

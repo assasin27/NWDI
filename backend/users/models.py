@@ -25,9 +25,15 @@ class User(AbstractUser):
         related_query_name="user",
     )
 
+    class Meta:
+        app_label = 'users'
+
 class SellerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_profile')
     farm_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     region = models.CharField(max_length=255)
     certification = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        app_label = 'users'

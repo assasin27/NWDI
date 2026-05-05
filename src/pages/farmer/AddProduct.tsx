@@ -7,10 +7,10 @@ import { Textarea } from '../../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Upload, 
+import {
+  ArrowLeft,
+  Plus,
+  Upload,
   Package,
   Search
 } from 'lucide-react';
@@ -53,18 +53,6 @@ const AddProduct: React.FC = () => {
 
   const handleInputChange = (field: keyof ProductForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const searchImage = async (productName: string) => {
-    try {
-      // Use Unsplash image URL directly for <img src>
-      const searchTerm = encodeURIComponent(productName);
-      const imageUrl = `https://source.unsplash.com/400x300/?${searchTerm}`;
-      setForm(prev => ({ ...prev, image: imageUrl }));
-      setMessage({ type: 'success', text: 'Image found and added!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to find image. Please add manually.' });
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 
+print("DEBUG: Loading farmfresh_backend.urls")
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/auth/', include('authentication.urls')),
@@ -10,3 +12,5 @@ urlpatterns = [
     path('api/v1/reviews/', include('reviews.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
 ]
+
+print(f"DEBUG: URL patterns loaded: {[str(p) for p in urlpatterns]}")

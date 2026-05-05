@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Heart, ShoppingCart, Loader2, MessageCircle, Camera } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger } from './ui/dialog';
+import { Heart, ShoppingCart, Loader2, MessageCircle, Camera, Leaf, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from './ui/dialog';
 import { Chatbot } from './Chatbot';
 import { CameraCapture } from './CameraCapture';
+import { freshnessService, FreshnessResult } from '../lib/freshnessService';
 import { useCart } from '../hooks/useCart';
 import { useToast } from '../hooks/use-toast';
 
@@ -45,6 +46,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [freshnessOpen, setFreshnessOpen] = useState(false);
+  const [freshnessResult, setFreshnessResult] = useState<FreshnessResult | null>(null);
+  const [analyzingFreshness, setAnalyzingFreshness] = useState(false);
   const { addToCart } = useCart();
   const { toast } = useToast();
 
@@ -200,7 +204,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={cameraOpen} onOpenChange={setCameraOpen}>
+          <Dialog open={freshnessOpen} onOpenChange={setFreshnessOpen}>
             <DialogTrigger asChild>
               <Button
                 variant="outline"
@@ -209,18 +213,118 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 aria-label="Check freshness"
                 title="Check product freshness with camera"
               >
-                <Camera className="h-4 w-4" />
+                <Leaf className="h-4 w-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
-              <CameraCapture
-                autoStart={true}
-                onFreshnessResult={(result) => {
-                  console.log(`Freshness check for ${product.name}:`, result);
-                  // TODO: Update product freshness score in database
-                  setCameraOpen(false);
-                }}
-              />
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-green-600" />
+                  Freshness Check - {product.name}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {!freshnessResult ? (
+                  <div className="text-center space-y-4">
+                    <div className="text-sm text-gray-600">
+                      Take a photo of the product to check its freshness
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        setAnalyzingFreshness(true);
+                        try {
+                          const imageData = await freshnessService.captureImage();
+                          const result = await freshnessService.analyzeImage(imageData);
+                          setFreshnessResult(result);
+                        } catch (error) {
+                          console.error('Freshness check failed:', error);
+                          setFreshnessResult({
+                            status: 'stale',
+                            confidence: 0,
+                            score: 1,
+                            is_fresh: false,
+                            grade: 'N/A',
+                            description: 'Could not analyze image. Backend service may not be available.',
+                            error: 'Service unavailable'
+                          });
+                        } finally {
+                          setAnalyzingFreshness(false);
+                        }
+                      }}
+                      disabled={analyzingFreshness}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {analyzingFreshness ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-4 w-4 mr-2" />
+                          Capture & Check Freshness
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className={`p-4 rounded-lg border ${
+                    freshnessResult.status === 'fresh'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      {freshnessResult.status === 'fresh' ? (
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                      )}
+                      <span className={`text-lg font-bold ${
+                        freshnessResult.status === 'fresh' ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {freshnessResult.grade} Grade
+                      </span>
+                    </div>
+
+                    <p className={`text-sm mb-2 ${
+                      freshnessResult.status === 'fresh' ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {freshnessResult.description}
+                    </p>
+
+                    {freshnessResult.confidence > 0 && (
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Confidence:</span>
+                        <span className="font-medium">
+                          {Math.round(freshnessResult.confidence * 100)}%
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        onClick={() => {
+                          setFreshnessResult(null);
+                          setAnalyzingFreshness(false);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Check Again
+                      </Button>
+                      <Button
+                        onClick={() => setFreshnessOpen(false)}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
 

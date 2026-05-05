@@ -13,7 +13,15 @@ export interface FreshnessPrediction {
   prediction: FreshnessResult;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1';
+const API_BASE_URL = (() => {
+  const apiUrl = ((import.meta.env.VITE_API_URL as string) || '').trim().replace(/\/+$/, '');
+  if (apiUrl) return apiUrl;
+
+  const apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || '').trim().replace(/\/+$/, '');
+  if (!apiBase) return '/api/v1';
+
+  return apiBase.endsWith('/api/v1') ? apiBase : `${apiBase}/api/v1`;
+})();
 
 export const freshnessService = {
   /**

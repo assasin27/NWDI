@@ -1,6 +1,14 @@
 // API Service for Django Backend
-// Use environment variable VITE_API_BASE_URL so dev/prod can point to different backends.
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || '/api/v1';
+// Use VITE_API_URL when available; otherwise fall back to VITE_API_BASE_URL + /api/v1.
+const API_BASE_URL = (() => {
+  const apiUrl = ((import.meta.env.VITE_API_URL as string) || '').trim().replace(/\/+$/, '');
+  if (apiUrl) return apiUrl;
+
+  const apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || '').trim().replace(/\/+$/, '');
+  if (!apiBase) return '/api/v1';
+
+  return apiBase.endsWith('/api/v1') ? apiBase : `${apiBase}/api/v1`;
+})();
 
 export interface ApiResponse<T> {
   data?: T;
